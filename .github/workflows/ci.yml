@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - main
+      - forest
       - "run-ci/**"
       - "**/run-ci/**"
   pull_request:
