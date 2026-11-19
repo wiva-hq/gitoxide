@@ -32,6 +32,47 @@ mod commit {
     use gix_lock::acquire::Fail;
 
     #[test]
+    fn with_fsync_flushes_contents_and_directory_only_when_enabled() -> gix_testtools::TestResult {
+        use std::io::Write;
+
+        let dir = tempfile::tempdir()?;
+        let resource = dir.path().join("resource");
+        let flushes = |before: gix_fs::FlushCount| {
+            let after = gix_fs::flush_count();
+            (after.files - before.files, after.directories - before.directories)
+        };
+        for (fsync, expected) in [
+            (gix_fs::Fsync::Off, (0, 0)),
+            (gix_fs::Fsync::Full, (1, usize::from(cfg!(unix)))),
+        ] {
+            let mut file =
+                gix_lock::File::acquire_to_update_resource(&resource, Fail::Immediately, None, Default::default())?;
+            file.write_all(b"open")?;
+            let before = gix_fs::flush_count();
+            file.commit_with_fsync(fsync)?;
+            assert_eq!(
+                flushes(before),
+                expected,
+                "{fsync:?}: an open lock is flushed before it replaces the resource, and its directory after"
+            );
+
+            let mut file =
+                gix_lock::File::acquire_to_update_resource(&resource, Fail::Immediately, None, Default::default())?;
+            file.write_all(b"closed")?;
+            let marker = file.close()?;
+            let before = gix_fs::flush_count();
+            marker.commit_with_fsync(fsync)?;
+            assert_eq!(
+                flushes(before),
+                expected,
+                "{fsync:?}: a closed lock is reopened to be flushed the same way"
+            );
+            assert_eq!(std::fs::read(&resource)?, b"closed", "the last commit is in place");
+        }
+        Ok(())
+    }
+
+    #[test]
     fn failure_to_commit_does_return_a_registered_marker() -> gix_testtools::TestResult {
         let dir = tempfile::tempdir()?;
         let resource = dir.path().join("resource-existing.ext");
