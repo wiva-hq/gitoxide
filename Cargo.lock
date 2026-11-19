@@ -2120,6 +2120,25 @@ dependencies = [
 [[package]]
 name = "gix-lfs"
 version = "0.0.0"
+dependencies = [
+ "base64 0.23.1",
+ "bstr",
+ "gix-command",
+ "gix-credentials",
+ "gix-error",
+ "gix-lfs",
+ "gix-quote",
+ "gix-sec",
+ "gix-tempfile",
+ "gix-testtools",
+ "gix-trace",
+ "gix-url",
+ "gix-utils",
+ "reqwest",
+ "serde",
+ "serde_json",
+ "sha2",
+]
 
 [[package]]
 name = "gix-lock"
