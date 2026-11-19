@@ -324,6 +324,7 @@ impl Transaction<'_, '_> {
                                     self.store.precompose_unicode,
                                     self.store.namespace.clone(),
                                     self.store.shared_repository_permissions,
+                                    self.store.fsync,
                                 )
                             })
                             .transpose()?

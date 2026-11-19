@@ -26,6 +26,50 @@ use crate::{
 mod collisions;
 
 #[test]
+fn fsync_flushes_the_written_reference_file_and_its_directory_only_when_enabled() -> Result {
+    let (_keep, mut store) = empty_store()?;
+    let dirs = usize::from(cfg!(unix));
+    for (index, (fsync, packed, expected)) in [
+        (gix_fs::Fsync::Off, false, (0, 0)),
+        (gix_fs::Fsync::Full, false, (1, dirs)),
+        (gix_fs::Fsync::Off, true, (0, 0)),
+        (gix_fs::Fsync::Full, true, (1, dirs)),
+    ]
+    .into_iter()
+    .enumerate()
+    {
+        store.fsync = fsync;
+        let mut transaction = store.transaction();
+        if packed {
+            transaction = transaction.packed_refs(
+                PackedRefs::DeletionsAndNonSymbolicUpdatesRemoveLooseSourceReference(Box::new(EmptyCommit)),
+            );
+        }
+        let name = format!("refs/heads/fsync-{index}");
+        let before = gix_fs::flush_count();
+        transaction
+            .prepare(
+                [RefEdit::update(
+                    name.as_str().try_into()?,
+                    ObjectId::empty_tree(crate::fixture_hash_kind()),
+                    PreviousValue::MustNotExist,
+                    "",
+                )],
+                Fail::Immediately,
+                Fail::Immediately,
+            )?
+            .commit(committer().to_ref(&mut TimeBuf::default()))?;
+        let after = gix_fs::flush_count();
+        assert_eq!(
+            (after.files - before.files, after.directories - before.directories),
+            expected,
+            "{fsync:?}, packed: {packed}: only the loose reference or packed-refs is flushed, never the reflog"
+        );
+    }
+    Ok(())
+}
+
+#[test]
 fn reflog_messages_preserve_bytes() -> Result {
     let (_keep, store) = empty_store()?;
     for (index, message) in [b"".as_slice(), b"plain text", b"raw \xff\xfe bytes"]

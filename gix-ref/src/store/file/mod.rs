@@ -25,6 +25,10 @@ pub struct Store {
     /// The parsed `core.sharedRepository` policy for reference files, reflogs, and newly created directories.
     /// Defaults to [`gix_fs::SharedPermissions::Umask`].
     pub shared_repository_permissions: gix_fs::SharedPermissions,
+    /// How to flush loose reference files and `packed-refs` before they replace the previous version, and their directory
+    /// afterwards, as `core.fsync` does for its `reference` component. Reflogs aren't flushed, just like in Git.
+    /// Defaults to [`gix_fs::Fsync::Off`].
+    pub fsync: gix_fs::Fsync,
     /// The namespace to use for edits and reads
     pub namespace: Option<Namespace>,
     /// This is only needed on Windows, where some device names are reserved at any level of a path, so that

@@ -102,12 +102,13 @@ impl Transaction<'_, '_> {
                         change.lock = lock;
                         continue;
                     }
-                    if update_ref && let Some(Err(err)) = lock.map(gix_lock::Marker::commit) {
+                    let fsync = self.store.fsync;
+                    if update_ref && let Some(Err(err)) = lock.map(|lock| lock.commit_with_fsync(fsync)) {
                         // TODO: when Kind::IsADirectory becomes stable, use that.
                         let err = if err.instance.resource_path().is_dir() {
                             gix_fs::dir::remove::empty_depth_first(err.instance.resource_path())
                                 .map_err(std::io::Error::other)
-                                .and_then(|_| err.instance.commit().map_err(|err| err.error))
+                                .and_then(|_| err.instance.commit_with_fsync(fsync).map_err(|err| err.error))
                                 .err()
                         } else {
                             Some(err.error)

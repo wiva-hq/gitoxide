@@ -17,6 +17,7 @@ impl packed::Transaction {
         lock: gix_lock::File,
         precompose_unicode: bool,
         namespace: Option<Namespace>,
+        fsync: gix_fs::Fsync,
     ) -> Self {
         packed::Transaction {
             buffer,
@@ -25,6 +26,7 @@ impl packed::Transaction {
             closed_lock: None,
             precompose_unicode,
             namespace,
+            fsync,
         }
     }
 }
@@ -145,6 +147,7 @@ impl packed::Transaction {
     /// Please note that actual edits invalidated existing packed buffers.
     /// Note: There is the potential to write changes into memory and return such a packed-refs buffer for reuse.
     pub fn commit(self) -> Result {
+        let fsync = self.fsync;
         let mut edits = self.edits.expect("BUG: cannot call commit() before prepare(…)");
         if edits.is_empty() {
             return Ok(());
@@ -216,7 +219,7 @@ impl packed::Transaction {
             out.into_inner()
                 .map_err(std::io::IntoInnerError::into_error)
                 .or_raise(|| message("Could not flush packed refs"))?
-                .commit()
+                .commit_with_fsync(fsync)
                 .or_raise(|| message("Could not commit packed refs"))?;
         }
         drop(refs_sorted);
@@ -276,6 +279,7 @@ pub(crate) fn buffer_into_transaction(
     precompose_unicode: bool,
     namespace: Option<Namespace>,
     shared_repository_permissions: gix_fs::SharedPermissions,
+    fsync: gix_fs::Fsync,
 ) -> Result<packed::Transaction> {
     let lock = gix_lock::File::acquire(&buffer.path, lock_mode, None, shared_repository_permissions, None)?;
     Ok(packed::Transaction {
@@ -285,5 +289,6 @@ pub(crate) fn buffer_into_transaction(
         edits: None,
         precompose_unicode,
         namespace,
+        fsync,
     })
 }

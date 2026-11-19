@@ -43,6 +43,8 @@ pub(crate) struct Transaction {
     precompose_unicode: bool,
     /// The namespace to use when preparing or writing refs
     namespace: Option<Namespace>,
+    /// How to flush the new `packed-refs` file when committing.
+    fsync: gix_fs::Fsync,
 }
 
 /// A reference as parsed from the `packed-refs` file

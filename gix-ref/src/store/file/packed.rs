@@ -24,6 +24,7 @@ impl file::Store {
             lock,
             self.precompose_unicode,
             self.namespace.clone(),
+            self.fsync,
         ))
     }
 
