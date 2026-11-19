@@ -8,6 +8,18 @@ use crate::store;
 
 use crate::store_impls::dynamic;
 
+impl<S> store::Handle<S>
+where
+    S: Deref<Target = dynamic::Store> + Clone,
+{
+    fn loose_write_policy(&self) -> crate::loose::WritePolicy {
+        crate::loose::WritePolicy {
+            shared_repository_permissions: self.shared_repository_permissions,
+            fsync: self.loose_fsync,
+        }
+    }
+}
+
 impl<S> gix_object::Write for store::Handle<S>
 where
     S: Deref<Target = dynamic::Store> + Clone,
@@ -15,19 +27,14 @@ where
     fn write_stream(&self, kind: Kind, size: u64, from: &mut dyn Read) -> Result<ObjectId> {
         let mut snapshot = self.snapshot.borrow_mut();
         match snapshot.loose_dbs.first() {
-            Some(ldb) => ldb.write_stream_with_permissions(kind, size, from, self.shared_repository_permissions),
+            Some(ldb) => ldb.write_stream_with_policy(kind, size, from, self.loose_write_policy()),
             None => {
                 let new_snapshot = self
                     .store
                     .load_one_index(self.index_ctx(snapshot.marker))?
                     .expect("there is always at least one ODB, and this code runs only once for initialization");
                 *snapshot = new_snapshot;
-                snapshot.loose_dbs[0].write_stream_with_permissions(
-                    kind,
-                    size,
-                    from,
-                    self.shared_repository_permissions,
-                )
+                snapshot.loose_dbs[0].write_stream_with_policy(kind, size, from, self.loose_write_policy())
             }
         }
     }
@@ -35,21 +42,14 @@ where
     fn write_buf_with_known_id(&self, kind: Kind, from: &[u8], id: ObjectId) -> Result<ObjectId> {
         let mut snapshot = self.snapshot.borrow_mut();
         match snapshot.loose_dbs.first() {
-            Some(ldb) => {
-                ldb.write_buf_with_known_id_and_permissions(kind, from, id, self.shared_repository_permissions)
-            }
+            Some(ldb) => ldb.write_buf_with_known_id_and_policy(kind, from, id, self.loose_write_policy()),
             None => {
                 let new_snapshot = self
                     .store
                     .load_one_index(self.index_ctx(snapshot.marker))?
                     .expect("there is always at least one ODB, and this code runs only once for initialization");
                 *snapshot = new_snapshot;
-                snapshot.loose_dbs[0].write_buf_with_known_id_and_permissions(
-                    kind,
-                    from,
-                    id,
-                    self.shared_repository_permissions,
-                )
+                snapshot.loose_dbs[0].write_buf_with_known_id_and_policy(kind, from, id, self.loose_write_policy())
             }
         }
     }
@@ -57,21 +57,19 @@ where
     fn write_stream_with_known_id(&self, kind: Kind, size: u64, from: &mut dyn Read, id: ObjectId) -> Result<ObjectId> {
         let mut snapshot = self.snapshot.borrow_mut();
         match snapshot.loose_dbs.first() {
-            Some(ldb) => {
-                ldb.write_stream_with_known_id_and_permissions(kind, size, from, id, self.shared_repository_permissions)
-            }
+            Some(ldb) => ldb.write_stream_with_known_id_and_policy(kind, size, from, id, self.loose_write_policy()),
             None => {
                 let new_snapshot = self
                     .store
                     .load_one_index(self.index_ctx(snapshot.marker))?
                     .expect("there is always at least one ODB, and this code runs only once for initialization");
                 *snapshot = new_snapshot;
-                snapshot.loose_dbs[0].write_stream_with_known_id_and_permissions(
+                snapshot.loose_dbs[0].write_stream_with_known_id_and_policy(
                     kind,
                     size,
                     from,
                     id,
-                    self.shared_repository_permissions,
+                    self.loose_write_policy(),
                 )
             }
         }

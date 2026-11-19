@@ -19,6 +19,11 @@ pub struct Options {
     ///
     /// Defaults to [`gix_fs::SharedPermissions::Umask`]. Objects remain read-only.
     pub shared_repository_permissions: gix_fs::SharedPermissions,
+    /// How to flush each new object and its directory before and after it is moved into place,
+    /// as `core.fsync` does for its `loose-object` component.
+    ///
+    /// Defaults to [`gix_fs::Fsync::Off`].
+    pub fsync: gix_fs::Fsync,
 }
 
 impl Default for Options {
@@ -27,6 +32,7 @@ impl Default for Options {
             alloc_limit_bytes: None,
             compression: gix_zlib::Compression::BEST_SPEED,
             shared_repository_permissions: gix_fs::SharedPermissions::Umask,
+            fsync: gix_fs::Fsync::Off,
         }
     }
 }
@@ -43,6 +49,7 @@ pub struct Store {
     /// The compression level to use when writing loose objects.
     pub(crate) compression: gix_zlib::Compression,
     pub(crate) shared_repository_permissions: gix_fs::SharedPermissions,
+    pub(crate) fsync: gix_fs::Fsync,
 }
 
 /// Initialization
@@ -69,6 +76,7 @@ impl Store {
             alloc_limit_bytes,
             compression,
             shared_repository_permissions,
+            fsync,
         } = options;
         Store {
             path: objects_directory.into(),
@@ -76,6 +84,7 @@ impl Store {
             alloc_limit_bytes,
             compression,
             shared_repository_permissions,
+            fsync,
         }
     }
 
@@ -111,3 +120,4 @@ pub struct Iter {
 }
 
 mod write;
+pub(crate) use write::WritePolicy;

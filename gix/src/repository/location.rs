@@ -80,6 +80,7 @@ impl crate::Repository {
                     current_dir: Some(current_dir.to_owned()),
                     loose_compression: self.objects.loose_compression,
                     shared_repository_permissions: self.objects.shared_repository_permissions,
+                    loose_fsync: self.objects.loose_fsync,
                 },
             )
             .or_raise(|| message("Could not reopen the object database with an absolute path"))?

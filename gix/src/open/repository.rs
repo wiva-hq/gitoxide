@@ -575,6 +575,7 @@ impl ThreadSafeRepository {
                         alloc_limit_bytes: config.alloc_limit_bytes,
                         loose_compression: config.loose_compression,
                         shared_repository_permissions: config.shared_repository_permissions,
+                        loose_fsync: gix_fs::Fsync::Off,
                         current_dir: current_dir.to_owned().into(),
                     },
                 )

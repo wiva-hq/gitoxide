@@ -40,6 +40,11 @@ where
     /// Changes take effect on the next write, including already-open loose databases, without affecting other handles.
     pub shared_repository_permissions: gix_fs::SharedPermissions,
 
+    /// How this handle flushes loose objects it writes, as `core.fsync` does for its `loose-object` component.
+    ///
+    /// Changes take effect on the next write, including already-open loose databases, without affecting other handles.
+    pub loose_fsync: gix_fs::Fsync,
+
     pub(crate) token: Option<handle::Mode>,
     snapshot: RefCell<load_index::Snapshot>,
     inflate: RefCell<gix_zlib::Inflate>,

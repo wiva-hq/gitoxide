@@ -146,6 +146,48 @@ mod write {
     }
 
     #[test]
+    fn fsync_flushes_each_object_and_new_directories_only_when_enabled() -> gix_testtools::TestResult {
+        let dir = gix_testtools::tempfile::tempdir()?;
+        let store = |fsync| {
+            loose::Store::at_opts(
+                dir.path(),
+                gix_testtools::object_hash(),
+                loose::Options {
+                    fsync,
+                    ..Default::default()
+                },
+            )
+        };
+        let flushes = |before: gix_fs::FlushCount| {
+            let after = gix_fs::flush_count();
+            (after.files - before.files, after.directories - before.directories)
+        };
+
+        let before = gix_fs::flush_count();
+        store(gix_fs::Fsync::Off).write_buf(gix_object::Kind::Blob, b"off")?;
+        assert_eq!(flushes(before), (0, 0), "nothing is flushed when off");
+
+        let db = store(gix_fs::Fsync::Full);
+        let unix = usize::from(cfg!(unix));
+        let before = gix_fs::flush_count();
+        let id = db.write_buf(gix_object::Kind::Blob, b"on")?;
+        assert_eq!(
+            flushes(before),
+            (1, 2 * unix),
+            "the object, its new fan-out directory and the objects directory are flushed"
+        );
+
+        let before = gix_fs::flush_count();
+        assert_eq!(db.write_buf(gix_object::Kind::Blob, b"on")?, id);
+        assert_eq!(
+            flushes(before),
+            (1, unix),
+            "an existing fan-out directory doesn't require flushing the objects directory"
+        );
+        Ok(())
+    }
+
+    #[test]
     fn read_and_write() -> gix_testtools::TestResult {
         let dir = gix_testtools::tempfile::tempdir()?;
         let db = ldb_at(dir.path());

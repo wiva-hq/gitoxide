@@ -184,6 +184,8 @@ pub struct Store {
     loose_compression: gix_zlib::Compression,
     /// The initial sharing policy for newly created handles.
     shared_repository_permissions: gix_fs::SharedPermissions,
+    /// The initial loose object flushing for newly created handles.
+    loose_fsync: gix_fs::Fsync,
 }
 
 /// Create a new cached handle to the object store with support for additional options.

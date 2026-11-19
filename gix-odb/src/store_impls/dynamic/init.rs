@@ -26,6 +26,9 @@ pub struct Options {
     /// The parsed `core.sharedRepository` policy for loose objects written by new handles.
     /// Defaults to [`gix_fs::SharedPermissions::Umask`].
     pub shared_repository_permissions: gix_fs::SharedPermissions,
+    /// How new handles flush loose objects they write, as `core.fsync` does for its `loose-object` component.
+    /// Defaults to [`gix_fs::Fsync::Off`].
+    pub loose_fsync: gix_fs::Fsync,
 }
 
 impl Default for Options {
@@ -37,6 +40,7 @@ impl Default for Options {
             current_dir: None,
             loose_compression: gix_zlib::Compression::BEST_SPEED,
             shared_repository_permissions: gix_fs::SharedPermissions::Umask,
+            loose_fsync: gix_fs::Fsync::Off,
         }
     }
 }
@@ -90,6 +94,7 @@ impl Store {
             current_dir,
             loose_compression,
             shared_repository_permissions,
+            loose_fsync,
         }: Options,
     ) -> std::io::Result<Self> {
         let _span = gix_trace::detail!("gix_odb::Store::at()");
@@ -150,6 +155,7 @@ impl Store {
             alloc_limit_bytes,
             loose_compression,
             shared_repository_permissions,
+            loose_fsync,
             num_handles_stable: Default::default(),
             num_handles_unstable: Default::default(),
             num_disk_state_consolidation: Default::default(),

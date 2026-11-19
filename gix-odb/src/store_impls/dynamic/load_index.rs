@@ -245,6 +245,7 @@ impl super::Store {
                                 alloc_limit_bytes: self.alloc_limit_bytes,
                                 compression: loose_compression,
                                 shared_repository_permissions: self.shared_repository_permissions,
+                                fsync: self.loose_fsync,
                             },
                         )
                     })

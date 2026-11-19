@@ -268,6 +268,7 @@ impl super::Store {
             ignore_replacements: false,
             loose_compression: self.loose_compression,
             shared_repository_permissions: self.shared_repository_permissions,
+            loose_fsync: self.loose_fsync,
             token: Some(token),
             inflate: RefCell::new(Default::default()),
             snapshot: RefCell::new(self.collect_snapshot()),
@@ -287,6 +288,7 @@ impl super::Store {
             ignore_replacements: false,
             loose_compression: self.loose_compression,
             shared_repository_permissions: self.shared_repository_permissions,
+            loose_fsync: self.loose_fsync,
             token: Some(token),
             inflate: RefCell::new(Default::default()),
             snapshot: RefCell::new(self.collect_snapshot()),
@@ -378,6 +380,7 @@ impl TryFrom<&super::Store> for super::Store {
                 current_dir: s.current_dir.clone().into(),
                 loose_compression: s.loose_compression,
                 shared_repository_permissions: s.shared_repository_permissions,
+                loose_fsync: s.loose_fsync,
             },
         )
     }
@@ -393,6 +396,7 @@ impl super::Handle<Rc<super::Store>> {
             ignore_replacements,
             loose_compression,
             shared_repository_permissions,
+            loose_fsync,
             token,
             snapshot: _,
             inflate: _,
@@ -405,6 +409,7 @@ impl super::Handle<Rc<super::Store>> {
         cache.max_recursion_depth = *max_recursion_depth;
         cache.loose_compression = *loose_compression;
         cache.shared_repository_permissions = *shared_repository_permissions;
+        cache.loose_fsync = *loose_fsync;
         if matches!(token.as_ref(), Some(Mode::KeepDeletedPacksAvailable)) {
             cache.prevent_pack_unload();
         }
@@ -430,6 +435,7 @@ where
             ignore_replacements: self.ignore_replacements,
             loose_compression: self.loose_compression,
             shared_repository_permissions: self.shared_repository_permissions,
+            loose_fsync: self.loose_fsync,
             token: {
                 let token = self.store.register_handle();
                 match self.token.as_ref().expect("token is always set here ") {
