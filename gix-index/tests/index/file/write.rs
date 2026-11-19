@@ -29,6 +29,32 @@ fn shared_permissions_apply_to_new_and_replaced_indexes() -> crate::Result {
     Ok(())
 }
 
+#[test]
+fn fsync_flushes_the_index_and_its_directory_only_when_enabled() -> crate::Result {
+    let dir = gix_testtools::tempfile::TempDir::new()?;
+    let mut index = gix_index::File::from_state(State::new(gix_testtools::object_hash()), dir.path().join("index"));
+    for (fsync, expected) in [
+        (gix_fs::Fsync::Off, (0, 0)),
+        (gix_fs::Fsync::Full, (1, usize::from(cfg!(unix)))),
+    ] {
+        let before = gix_fs::flush_count();
+        index.write(
+            Options {
+                fsync,
+                ..Default::default()
+            },
+            gix_fs::SharedPermissions::Umask,
+        )?;
+        let after = gix_fs::flush_count();
+        assert_eq!(
+            (after.files - before.files, after.directories - before.directories),
+            expected,
+            "{fsync:?}: the new index is flushed before it replaces the old one, and its directory after"
+        );
+    }
+    Ok(())
+}
+
 /// Round-trips should eventually be possible for all files we have, as we write them back exactly as they were read.
 #[test]
 fn roundtrips() -> TestResult {
@@ -365,6 +391,7 @@ fn skip_hash() -> TestResult {
             Options {
                 extensions: Default::default(),
                 skip_hash,
+                fsync: gix_fs::Fsync::Off,
             },
             Default::default(),
         )?;
@@ -641,6 +668,7 @@ fn only_tree_ext() -> Options {
             untracked_cache: false,
         },
         skip_hash: false,
+        fsync: gix_fs::Fsync::Off,
     }
 }
 
@@ -648,5 +676,6 @@ fn options_with(extensions: write::Extensions) -> Options {
     Options {
         extensions,
         skip_hash: false,
+        fsync: gix_fs::Fsync::Off,
     }
 }

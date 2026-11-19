@@ -69,6 +69,11 @@ pub struct Options {
     /// via [`File::write()`](crate::File::write()) and [`File::write_to()`](crate::File::write_to()).
     /// Note that
     pub skip_hash: bool,
+    /// How [`File::write()`](crate::File::write()) flushes the new index before it replaces the old one,
+    /// and its directory afterwards, as `core.fsync` does for its `index` component.
+    ///
+    /// Defaults to [`gix_fs::Fsync::Off`]. Writing to a stream with [`File::write_to()`](crate::File::write_to()) ignores it.
+    pub fsync: gix_fs::Fsync,
 }
 
 impl State {
@@ -83,6 +88,7 @@ impl State {
         Options {
             extensions,
             skip_hash: _,
+            fsync: _,
         }: Options,
     ) -> Result<Version> {
         let _span = gix_trace::detail!("gix_index::State::write()");

@@ -111,6 +111,7 @@ impl Outcome {
             crate::index::write::Options {
                 extensions: Default::default(),
                 skip_hash: self.skip_hash,
+                fsync: gix_fs::Fsync::Off,
             },
             self.shared_repository_permissions,
         ))

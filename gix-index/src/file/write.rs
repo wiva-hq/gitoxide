@@ -68,7 +68,7 @@ impl File {
             .or_raise(|| message("Could not write index"))?;
         match lock.into_inner() {
             Ok(lock) => lock
-                .commit()
+                .commit_with_fsync(options.fsync)
                 .or_raise(|| message("Could not commit lock for index file"))?,
             Err(err) => {
                 bail!(
