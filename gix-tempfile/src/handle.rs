@@ -324,11 +324,30 @@ pub mod persist {
         /// on error or returns the open now persisted former tempfile.
         /// Note that it might not exist anymore if an interrupt handler managed to steal it and allowed the program to return to
         /// its normal flow.
+        ///
+        /// Nothing is flushed to storage, see [`persist_with_fsync()`](Self::persist_with_fsync()) for that.
         pub fn persist(self, path: impl AsRef<Path>) -> Result<Option<std::fs::File>, Error<Writable>> {
+            self.persist_with_fsync(path, gix_fs::Fsync::Off)
+        }
+
+        /// Like [`persist()`](Self::persist()), but use `fsync` to flush the tempfile's contents before moving it into place,
+        /// and the directory containing `path` afterwards so the move survives a crash.
+        ///
+        /// If only the directory couldn't be flushed, the file is in place but the handle of the returned error
+        /// doesn't refer to a tempfile anymore.
+        pub fn persist_with_fsync(
+            self,
+            path: impl AsRef<Path>,
+            fsync: gix_fs::Fsync,
+        ) -> Result<Option<std::fs::File>, Error<Writable>> {
+            let path = path.as_ref();
             let res = REGISTRY.remove(&self.id);
 
-            match res.and_then(|(_k, v)| v.map(|v| v.persist(path))) {
+            match res.and_then(|(_k, v)| v.map(|v| v.persist(path, fsync))) {
                 Some(Ok(Some(file))) => {
+                    if let Err(error) = fsync.parent_directory(path) {
+                        return Err(Error::<Writable> { error, handle: self });
+                    }
                     std::mem::forget(self);
                     Ok(Some(file))
                 }
@@ -351,11 +370,31 @@ pub mod persist {
     impl Handle<Closed> {
         /// Persist this tempfile to replace the file at the given `path` if necessary, in a way that recovers the original instance
         /// on error.
+        ///
+        /// Nothing is flushed to storage, see [`persist_with_fsync()`](Self::persist_with_fsync()) for that.
         pub fn persist(self, path: impl AsRef<Path>) -> Result<(), Error<Closed>> {
+            self.persist_with_fsync(path, gix_fs::Fsync::Off)
+        }
+
+        /// Like [`persist()`](Self::persist()), but use `fsync` to flush the tempfile's contents before moving it into place,
+        /// and the directory containing `path` afterwards so the move survives a crash.
+        /// The tempfile is reopened to flush it unless `fsync` is [`Off`](gix_fs::Fsync::Off).
+        ///
+        /// If only the directory couldn't be flushed, the file is in place but the handle of the returned error
+        /// doesn't refer to a tempfile anymore.
+        pub fn persist_with_fsync(self, path: impl AsRef<Path>, fsync: gix_fs::Fsync) -> Result<(), Error<Closed>> {
+            let path = path.as_ref();
             let res = REGISTRY.remove(&self.id);
 
-            match res.and_then(|(_k, v)| v.map(|v| v.persist(path))) {
-                None | Some(Ok(None)) => {
+            match res.and_then(|(_k, v)| v.map(|v| v.persist(path, fsync))) {
+                Some(Ok(None)) => {
+                    if let Err(error) = fsync.parent_directory(path) {
+                        return Err(Error::<Closed> { error, handle: self });
+                    }
+                    std::mem::forget(self);
+                    Ok(())
+                }
+                None => {
                     std::mem::forget(self);
                     Ok(())
                 }

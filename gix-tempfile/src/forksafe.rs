@@ -150,8 +150,22 @@ impl ForksafeTempfile {
             self
         }
     }
-    pub fn persist(self, path: impl AsRef<Path>) -> Result<Option<std::fs::File>, (std::io::Error, Self)> {
-        self.persist_inner(path.as_ref())
+    /// Flush the contents with `fsync` and move the tempfile to `path`, leaving the directory to the caller.
+    pub fn persist(self, path: &Path, fsync: gix_fs::Fsync) -> Result<Option<std::fs::File>, (std::io::Error, Self)> {
+        let flushed = match &self.inner {
+            TempfileOrTemppath::Tempfile(file) => fsync.file(file.as_file()),
+            // Windows can only flush files opened for writing, while Unix can flush read-only files too.
+            TempfileOrTemppath::Temppath(temppath) if fsync.is_enabled() => std::fs::OpenOptions::new()
+                .read(!cfg!(windows))
+                .write(cfg!(windows))
+                .open(temppath)
+                .and_then(|file| fsync.file(&file)),
+            TempfileOrTemppath::Temppath(_) => Ok(()),
+        };
+        if let Err(err) = flushed {
+            return Err((err, self));
+        }
+        self.persist_inner(path)
     }
 
     #[cfg(windows)]
