@@ -67,6 +67,84 @@ fn encoding_attributes_preserve_utf8_bytes_and_latin1_controls() -> TestResult {
 }
 
 #[test]
+fn builtin_driver_takes_precedence_over_program_driver_of_the_same_name() -> TestResult {
+    use std::{io::Read, path::Path, sync::Arc};
+
+    use gix_error::ResultExt;
+    use gix_filter::driver::{Operation, apply::Context, builtin::Filter};
+
+    struct ChangeCase;
+    impl Filter for ChangeCase {
+        fn apply(
+            &self,
+            src: &mut dyn Read,
+            operation: Operation,
+            _ctx: Context<'_, '_>,
+        ) -> gix_error::Result<Box<dyn Read>> {
+            let mut buf = Vec::new();
+            src.read_to_end(&mut buf).or_error()?;
+            match operation {
+                Operation::Clean => buf.make_ascii_uppercase(),
+                Operation::Smudge => buf.make_ascii_lowercase(),
+            }
+            Ok(Box::new(std::io::Cursor::new(buf)))
+        }
+    }
+
+    let (mut cache, mut pipe) = pipeline("driver-only", || {
+        (
+            vec![crate::driver::apply::driver_with_process()],
+            Vec::new(),
+            Default::default(),
+            Default::default(),
+        )
+    })?;
+    pipe.builtin_drivers_mut().push(gix_filter::driver::Builtin {
+        name: "arrow".into(),
+        filter: Arc::new(ChangeCase),
+    });
+    let mut attributes = |path: &bstr::BStr, attrs: &mut gix_attributes::search::Outcome| {
+        cache
+            .at_entry(path, None, &gix_object::find::Never)
+            .expect("fixture attributes can be read")
+            .matching_attributes(attrs);
+    };
+
+    let mut out = pipe.convert_to_git(&b"hello"[..], Path::new("file"), &mut attributes, &mut |_| Ok(None))?;
+    assert!(
+        matches!(out, gix_filter::pipeline::convert::ToGitOutcome::Process(_)),
+        "the builtin driver streams its output like a process driver"
+    );
+    let mut actual = Vec::new();
+    out.read_to_end(&mut actual)?;
+    assert_eq!(
+        actual.as_bstr(),
+        "HELLO",
+        "the builtin driver cleans instead of the program"
+    );
+    drop(out);
+
+    let mut out = pipe.convert_to_worktree(
+        b"HELLO",
+        "file".into(),
+        &mut attributes,
+        to_worktree::Options {
+            can_delay: gix_filter::driver::apply::Delay::Allow,
+            unknown_encoding: to_worktree::UnknownEncoding::Fail,
+        },
+    )?;
+    assert!(!out.is_delayed(), "builtin drivers never delay their output");
+    actual.clear();
+    out.read_to_end(&mut actual)?;
+    assert_eq!(
+        actual.as_bstr(),
+        "hello",
+        "the builtin driver smudges instead of the program"
+    );
+    Ok(())
+}
+
+#[test]
 fn roundtrip_selection_matches_attribute_spelling_not_encoding_identity() -> TestResult {
     use gix_encoding::Encoding;
     use std::path::Path;

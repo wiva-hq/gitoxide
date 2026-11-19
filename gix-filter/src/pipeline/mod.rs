@@ -67,6 +67,7 @@ impl Pipeline {
             processes: driver::State::new(context),
             options,
             bufs: Default::default(),
+            builtin_drivers: Vec::new(),
         }
     }
 
@@ -102,6 +103,13 @@ impl Pipeline {
     /// Return a set of options for configuration after instantiation.
     pub fn options_mut(&mut self) -> &mut Options {
         &mut self.options
+    }
+
+    /// Return the drivers implemented in-process, which are used for paths whose `filter` attribute names them.
+    ///
+    /// They take precedence over [program drivers](crate::Driver) of the same name.
+    pub fn builtin_drivers_mut(&mut self) -> &mut Vec<driver::Builtin> {
+        &mut self.builtin_drivers
     }
 
     /// Return our double-buffers for reuse by the caller.

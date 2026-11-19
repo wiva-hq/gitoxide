@@ -3,7 +3,11 @@ use std::{io::Read, path::Path};
 
 use bstr::BStr;
 
-use crate::{Pipeline, driver, eol, ident, pipeline::util::Configuration, worktree};
+use crate::{
+    Pipeline, driver, eol, ident,
+    pipeline::util::{Configuration, DriverRef},
+    worktree,
+};
 
 ///
 pub mod to_git {
@@ -66,6 +70,7 @@ impl Pipeline {
         } = Configuration::at_path(
             bstr_rela_path.as_ref(),
             &self.options.drivers,
+            &self.builtin_drivers,
             &mut self.attrs,
             attributes,
             self.options.eol_config,
@@ -86,14 +91,15 @@ impl Pipeline {
             },
         )?;
 
-        if let Some(driver) = driver
-            && let Some(mut read) = self.processes.apply(
-                driver,
-                &mut src,
-                driver::Operation::Clean,
-                self.context.with_path(bstr_rela_path.as_ref()),
-            )?
-        {
+        let ctx = self.context.with_path(bstr_rela_path.as_ref());
+        let driver_output: Option<Box<dyn std::io::Read + '_>> = match driver {
+            Some(DriverRef::Program(driver)) => {
+                self.processes.apply(driver, &mut src, driver::Operation::Clean, ctx)?
+            }
+            Some(DriverRef::Builtin(builtin)) => Some(builtin.filter.apply(&mut src, driver::Operation::Clean, ctx)?),
+            None => None,
+        };
+        if let Some(mut read) = driver_output {
             if !apply_ident_filter && encoding.is_none() && !would_convert_eol {
                 // Note that this is not typically a benefit in terms of saving memory as most filters
                 // aren't expected to make the output file larger. It's more about who is waiting for the filter's
@@ -178,6 +184,7 @@ impl Pipeline {
         } = Configuration::at_path(
             rela_path,
             &self.options.drivers,
+            &self.builtin_drivers,
             &mut self.attrs,
             attributes,
             self.options.eol_config,
@@ -211,14 +218,20 @@ impl Pipeline {
 
         if let Some(driver) = driver {
             let (mut src, _dest) = bufs.src_and_dest();
-            if let Some(maybe_delayed) = self.processes.apply_delayed(
-                driver,
-                &mut src,
-                driver::Operation::Smudge,
-                can_delay,
-                self.context.with_path(rela_path),
-            )? {
-                return Ok(ToWorktreeOutcome::Process(maybe_delayed));
+            let ctx = self.context.with_path(rela_path);
+            match driver {
+                DriverRef::Program(driver) => {
+                    if let Some(maybe_delayed) =
+                        self.processes
+                            .apply_delayed(driver, &mut src, driver::Operation::Smudge, can_delay, ctx)?
+                    {
+                        return Ok(ToWorktreeOutcome::Process(maybe_delayed));
+                    }
+                }
+                DriverRef::Builtin(builtin) => {
+                    let read = builtin.filter.apply(&mut src, driver::Operation::Smudge, ctx)?;
+                    return Ok(ToWorktreeOutcome::Process(driver::apply::MaybeDelayed::Immediate(read)));
+                }
             }
         }
 

@@ -58,6 +58,8 @@ pub struct Pipeline {
     processes: driver::State,
     /// A utility to handle multiple buffers to keep results of various filters.
     bufs: gix_utils::Buffers,
+    /// Drivers implemented in-process, which take precedence over program drivers of the same name.
+    builtin_drivers: Vec<driver::Builtin>,
 }
 
 /// A declaration of a driver program.

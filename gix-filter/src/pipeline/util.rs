@@ -11,8 +11,17 @@ use crate::{
     pipeline::{Context, CrlfRoundTripCheck},
 };
 
+/// The driver selected by the `filter` attribute.
+#[derive(Clone, Copy)]
+pub(crate) enum DriverRef<'a> {
+    /// A driver that runs programs.
+    Program(&'a Driver),
+    /// A driver implemented in-process.
+    Builtin(&'a driver::Builtin),
+}
+
 pub(crate) struct Configuration<'a> {
-    pub(crate) driver: Option<&'a Driver>,
+    pub(crate) driver: Option<DriverRef<'a>>,
     /// What attributes say about CRLF handling.
     pub(crate) _attr_digest: Option<eol::AttributesDigest>,
     /// The final digest that includes configuration values
@@ -24,21 +33,35 @@ pub(crate) struct Configuration<'a> {
 }
 
 impl<'driver> Configuration<'driver> {
+    #[allow(clippy::too_many_arguments)]
     pub(crate) fn at_path(
         rela_path: &BStr,
         drivers: &'driver [Driver],
+        builtin_drivers: &'driver [driver::Builtin],
         attrs: &mut gix_attributes::search::Outcome,
         attributes: &mut dyn FnMut(&BStr, &mut gix_attributes::search::Outcome),
         config: eol::Configuration,
         ignore_unknown_encoding: bool,
         roundtrip_encodings: &[BString],
     ) -> Result<Configuration<'driver>> {
-        fn extract_driver<'a>(drivers: &'a [Driver], attr: &gix_attributes::search::Match<'_>) -> Option<&'a Driver> {
-            if let StateRef::Value(name) = attr.assignment.state {
-                drivers.iter().find(|d| d.name == name.as_bstr())
-            } else {
-                None
-            }
+        fn extract_driver<'a>(
+            drivers: &'a [Driver],
+            builtin_drivers: &'a [driver::Builtin],
+            attr: &gix_attributes::search::Match<'_>,
+        ) -> Option<DriverRef<'a>> {
+            let StateRef::Value(name) = attr.assignment.state else {
+                return None;
+            };
+            builtin_drivers
+                .iter()
+                .find(|d| d.name == name.as_bstr())
+                .map(DriverRef::Builtin)
+                .or_else(|| {
+                    drivers
+                        .iter()
+                        .find(|d| d.name == name.as_bstr())
+                        .map(DriverRef::Program)
+                })
         }
 
         fn extract_encoding(
@@ -105,7 +128,7 @@ impl<'driver> Configuration<'driver> {
         attributes(rela_path, attrs);
         let attrs: SmallVec<[_; crate::pipeline::ATTRS.len()]> = attrs.iter_selected().collect();
         let apply_ident_filter = attrs[1].assignment.state.is_set();
-        let driver = extract_driver(drivers, &attrs[2]);
+        let driver = extract_driver(drivers, builtin_drivers, &attrs[2]);
         let encoding = extract_encoding(&attrs[5], ignore_unknown_encoding)?;
         let check_roundtrip_encoding = match attrs[5].assignment.state {
             StateRef::Value(name) => roundtrip_encodings

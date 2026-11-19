@@ -17,6 +17,10 @@ pub mod delayed;
 ///
 pub mod process;
 
+/// Filter drivers implemented in-process.
+pub mod builtin;
+pub use builtin::Builtin;
+
 /// A literal driver process.
 pub enum Process<'a> {
     /// A spawned processes to handle a single file
