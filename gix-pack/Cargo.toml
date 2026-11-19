@@ -83,6 +83,7 @@ gix-fs = { version = "^1.0.0", path = "../gix-fs", optional = true }
 gix-pack = { path = ".", features = ["sha1", "sha256", "pack-cache-lru-dynamic", "pack-cache-lru-static", "object-cache-dynamic", "serde", "testing"] }
 gix-testtools = { path = "../tests/tools", default-features = false, features = ["sha1", "sha256"] }
 gix-odb = { path = "../gix-odb", features = ["sha1", "sha256"] }
+gix-fs = { path = "../gix-fs", features = ["unstable"] }
 gix-object = { path = "../gix-object" }
 gix-traverse = { path = "../gix-traverse" }
 

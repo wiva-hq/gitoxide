@@ -305,6 +305,8 @@ fn receive_pack_blocking(
         iteration_mode: pack::data::input::Mode::Verify,
         alloc_limit_bytes: None,
         compression: gix::zlib::Compression::BEST_SPEED,
+        pack_fsync: gix::fs::Fsync::Off,
+        index_fsync: gix::fs::Fsync::Off,
     };
     let outcome = pack::Bundle::write_to_directory(
         &mut input,

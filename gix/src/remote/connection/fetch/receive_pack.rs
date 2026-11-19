@@ -183,6 +183,8 @@ where
             alloc_limit_bytes: repo.config.alloc_limit_bytes,
             compression: repo.config.loose_compression,
             shared_repository_permissions: repo.config.shared_repository_permissions,
+            pack_fsync: gix_fs::Fsync::Off,
+            index_fsync: gix_fs::Fsync::Off,
         };
         let mut write_pack_bundle = None;
 

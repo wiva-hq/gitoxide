@@ -29,6 +29,15 @@ pub struct Options {
     /// Defaults to [`gix_fs::SharedPermissions::Umask`]. Pack and index files remain read-only;
     /// `.keep` markers retain Git's private permissions independently of this policy.
     pub shared_repository_permissions: gix_fs::SharedPermissions,
+    /// How to flush the pack data file before it is moved into place, as `core.fsync` does for its `pack` component.
+    ///
+    /// Defaults to [`gix_fs::Fsync::Off`].
+    pub pack_fsync: gix_fs::Fsync,
+    /// How to flush the pack index file before it is moved into place, as `core.fsync` does for its `pack-metadata`
+    /// component. The index is moved into place after the pack, so the pack becomes visible only once both are written.
+    ///
+    /// Defaults to [`gix_fs::Fsync::Off`].
+    pub index_fsync: gix_fs::Fsync,
 }
 
 impl Default for Options {
@@ -41,6 +50,8 @@ impl Default for Options {
             alloc_limit_bytes: None,
             compression: gix_zlib::Compression::BEST_SPEED,
             shared_repository_permissions: gix_fs::SharedPermissions::Umask,
+            pack_fsync: gix_fs::Fsync::Off,
+            index_fsync: gix_fs::Fsync::Off,
         }
     }
 }

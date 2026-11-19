@@ -159,6 +159,26 @@ mod write_to_directory {
     }
 
     #[test]
+    fn fsync_flushes_pack_and_index_with_their_directory_only_when_enabled() -> gix_testtools::TestResult {
+        let flushes = |before: gix_fs::FlushCount| {
+            let after = gix_fs::flush_count();
+            (after.files - before.files, after.directories - before.directories)
+        };
+        let before = gix_fs::flush_count();
+        write_pack_with_fsync(Some(TempDir::new()?), SMALL_PACK, gix_fs::Fsync::Off)?;
+        assert_eq!(flushes(before), (0, 0), "nothing is flushed when off");
+
+        let before = gix_fs::flush_count();
+        write_pack_with_fsync(Some(TempDir::new()?), SMALL_PACK, gix_fs::Fsync::Full)?;
+        assert_eq!(
+            flushes(before),
+            (2, 2 * usize::from(cfg!(unix))),
+            "the pack and its index are flushed before they are moved into place, and their directory after each move"
+        );
+        Ok(())
+    }
+
+    #[test]
     #[cfg(unix)]
     fn immutable_bundle_permissions_match_git_after_umask() -> gix_testtools::TestResult {
         use std::os::unix::fs::PermissionsExt;
@@ -290,6 +310,8 @@ mod write_to_directory {
                             alloc_limit_bytes: None,
                             compression: gix_zlib::Compression::BEST_SPEED,
                             shared_repository_permissions: gix_fs::SharedPermissions::Umask,
+                            pack_fsync: gix_fs::Fsync::Off,
+                            index_fsync: gix_fs::Fsync::Off,
                         },
                     )?;
                     assert_eq!(
@@ -377,6 +399,8 @@ mod write_to_directory {
                 alloc_limit_bytes: None,
                 compression: gix_zlib::Compression::BEST_SPEED,
                 shared_repository_permissions: gix_fs::SharedPermissions::Umask,
+                pack_fsync: gix_fs::Fsync::Off,
+                index_fsync: gix_fs::Fsync::Off,
             },
         )
         .expect_err("a ref-delta without an in-pack or external base cannot be indexed");
@@ -524,6 +548,8 @@ mod write_to_directory {
                 alloc_limit_bytes: prevent_allocation,
                 compression: gix_zlib::Compression::BEST_SPEED,
                 shared_repository_permissions: gix_fs::SharedPermissions::Umask,
+                pack_fsync: gix_fs::Fsync::Off,
+                index_fsync: gix_fs::Fsync::Off,
             },
         )
         .expect_err("a zero allocation limit rejects non-empty delta-tree storage");
@@ -537,6 +563,14 @@ mod write_to_directory {
     }
 
     fn write_pack(directory: Option<impl AsRef<Path>>, pack_file: &str) -> Result<pack::bundle::write::Outcome> {
+        write_pack_with_fsync(directory, pack_file, gix_fs::Fsync::Off)
+    }
+
+    fn write_pack_with_fsync(
+        directory: Option<impl AsRef<Path>>,
+        pack_file: &str,
+        fsync: gix_fs::Fsync,
+    ) -> Result<pack::bundle::write::Outcome> {
         let pack_file = fs::File::open(fixture_path(pack_file))?;
         static SHOULD_INTERRUPT: AtomicBool = AtomicBool::new(false);
         Ok(pack::Bundle::write_to_directory_eagerly(
@@ -554,6 +588,8 @@ mod write_to_directory {
                 alloc_limit_bytes: None,
                 compression: gix_zlib::Compression::BEST_SPEED,
                 shared_repository_permissions: gix_fs::SharedPermissions::Umask,
+                pack_fsync: fsync,
+                index_fsync: fsync,
             },
         )?)
     }

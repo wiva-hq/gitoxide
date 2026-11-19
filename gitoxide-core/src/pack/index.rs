@@ -87,6 +87,8 @@ pub fn from_pack(
         alloc_limit_bytes: None,
         compression: gix::zlib::Compression::BEST_SPEED,
         shared_repository_permissions: gix::fs::SharedPermissions::Umask,
+        pack_fsync: gix::fs::Fsync::Off,
+        index_fsync: gix::fs::Fsync::Off,
     };
     let out = ctx.out;
     let format = ctx.format;

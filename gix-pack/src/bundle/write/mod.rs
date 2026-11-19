@@ -285,6 +285,8 @@ impl crate::Bundle {
             alloc_limit_bytes,
             compression: _,
             shared_repository_permissions,
+            pack_fsync,
+            index_fsync,
         }: Options,
         data_file: SharedTempFile,
         mut pack_entries_iter: Box<dyn Iterator<Item = Result<data::input::Entry>> + 'a>,
@@ -353,13 +355,13 @@ impl crate::Bundle {
                             .or_raise(|| message("Could not set temporary pack file permissions"))?;
                         let keep_path = create_keep_file(&data_path)?;
                         data_file
-                            .persist(&data_path)
+                            .persist_with_fsync(&data_path, pack_fsync)
                             .or_raise(|| message("Could not persist pack file"))?;
                         keep_path
                     };
                     if !index_path.is_file() {
                         index_file
-                            .persist(&index_path)
+                            .persist_with_fsync(&index_path, index_fsync)
                             .inspect_err(|_err| {
                                 gix_trace::warn!("pack file at \"{}\" is retained despite failing to move the index file into place. You can use plumbing to make it usable.",data_path.display());
                             })
