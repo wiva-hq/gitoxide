@@ -281,6 +281,7 @@ Clients for Git's filesystem monitor hooks and native daemon protocol.
 * Other filesystem APIs, including `serde` and `walkdir` support, require `unstable`.
 * [x] race-proof directory creation with public retry configuration and shared-repository permissions
 * [x] empty-directory cleanup with a boundary
+* [x] flush files and directories to storage like `core.fsyncMethod`, with `F_FULLFSYNC` on Apple platforms
 * [x] probe capabilities (experimental, requires `unstable`)
 * [x] symlink creation and removal (experimental, requires `unstable`)
 * [x] file snapshots (experimental, requires `unstable`)

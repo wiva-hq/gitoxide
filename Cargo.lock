@@ -1957,6 +1957,7 @@ dependencies = [
  "insta",
  "is_ci",
  "libc",
+ "rustix",
  "serde",
  "tempfile",
  "walkdir",

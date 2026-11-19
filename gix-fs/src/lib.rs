@@ -1,8 +1,9 @@
 //! A crate with file-system specific utilities.
 //!
-//! The stable API covers directory creation and cleanup, permission handling, and clearing Windows read-only attributes:
-//! [`dir::create::Retries`], [`dir::create::all()`], [`dir::remove::empty_upward_until_boundary()`],
-//! [`SharedPermissions`], [`set_shared_repository_permissions()`], and [`clear_readonly_attribute()`].
+//! The stable API covers directory creation and cleanup, permission handling, clearing Windows read-only attributes,
+//! and flushing written data to storage: [`dir::create::Retries`], [`dir::create::all()`],
+//! [`dir::remove::empty_upward_until_boundary()`], [`SharedPermissions`], [`set_shared_repository_permissions()`],
+//! [`clear_readonly_attribute()`], and [`Fsync`].
 //!
 //! All other public APIs require the `unstable` feature and may break in minor releases.
 //! Restrict updates to the same minor series when using them. The `serde` and `walkdir` features also enable `unstable`.
@@ -113,6 +114,12 @@ mod file;
 pub use file::clear_readonly_attribute;
 #[gix_macros::unstable(since = "2026-09-30")]
 pub use file::{FileOrSymlink, open_options_no_follow, open_read_only_no_follow};
+
+#[cfg_attr(not(feature = "unstable"), allow(dead_code))]
+mod fsync;
+pub use fsync::Fsync;
+#[gix_macros::unstable(since = "2026-11-19")]
+pub use fsync::{FlushCount, flush_count};
 
 #[cfg_attr(not(feature = "unstable"), allow(dead_code))]
 mod snapshot;
