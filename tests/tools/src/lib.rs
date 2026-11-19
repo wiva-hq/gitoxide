@@ -79,6 +79,9 @@ pub mod repository;
 
 mod fixture_cache;
 
+mod http_backend;
+pub use http_backend::{GitHttpBackend, spawn_git_http_backend};
+
 const ARCHIVE_DIR_NAME: &str = "generated-archives";
 const BASH_FIXTURE_PRELUDE: &str = include_str!("scripted_fixture_prelude.sh");
 
@@ -641,7 +644,13 @@ fn spawn_git_daemon_process(working_dir: impl AsRef<Path>) -> std::io::Result<Gi
         }));
         configure_git_environment(&mut cmd, working_dir.as_ref())
             .current_dir(working_dir)
-            .args(["--verbose", "--base-path=.", "--export-all", "--user-path"])
+            .args([
+                "--verbose",
+                "--base-path=.",
+                "--export-all",
+                "--user-path",
+                "--enable=receive-pack",
+            ])
             .arg(format!("--port={free_port}"))
             .spawn()?
     };
@@ -709,6 +718,7 @@ fn spawn_git_daemon_inetd(working_dir: impl AsRef<Path>) -> std::io::Result<GitD
                         "--base-path=.",
                         "--export-all",
                         "--user-path",
+                        "--enable=receive-pack",
                     ])
                     .current_dir(&working_dir)
                     .stdin(stdin)
