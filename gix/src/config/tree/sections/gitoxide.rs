@@ -160,6 +160,12 @@ mod subsections {
         pub const FILTER_PROCESS_DELAY: keys::Boolean =
             keys::Boolean::new_boolean("filterProcessDelay", &Gitoxide::CORE);
 
+        /// The `gitoxide.core.builtinLfsFilter` key (default `true`).
+        ///
+        /// If `true`, the default, the `lfs` filter driver is implemented natively with the `lfs` feature, in place of
+        /// any configured `filter.lfs.*` programs. If `false`, the configured programs are used.
+        pub const BUILTIN_LFS_FILTER: keys::Boolean = keys::Boolean::new_boolean("builtinLfsFilter", &Gitoxide::CORE);
+
         /// The `gitoxide.core.externalCommandStderr` key (default `true`).
         ///
         /// If `true`, the default, `stderr` of worktree filter programs, or any other git-context bearing command
@@ -199,6 +205,7 @@ mod subsections {
                 &Self::INDEX_FILE,
                 &Self::PROTECT_WINDOWS,
                 &Self::FILTER_PROCESS_DELAY,
+                &Self::BUILTIN_LFS_FILTER,
                 &Self::EXTERNAL_COMMAND_STDERR,
                 &Self::REFS_NAMESPACE,
             ]

@@ -116,6 +116,8 @@ mod impls;
 #[cfg(feature = "index")]
 mod index;
 pub(crate) mod init;
+#[cfg(feature = "lfs")]
+mod lfs;
 mod location;
 #[cfg(feature = "mailmap")]
 mod mailmap;

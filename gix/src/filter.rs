@@ -64,12 +64,20 @@ impl<'repo> Pipeline<'repo> {
     /// Create a new instance by extracting all necessary information and configuration from a `repo` along with `cache` for accessing
     /// attributes. The `index` is used for some filters which may access it under very specific circumstances.
     pub fn new(repo: &'repo Repository, cache: gix_worktree::Stack) -> Result<Self> {
-        let pipeline = gix_filter::Pipeline::new(repo.command_context()?, repo.object_hash(), Self::options(repo)?);
+        let pipeline = Self::plumbing(repo)?;
         Ok(Pipeline {
             inner: pipeline,
             cache,
             repo,
         })
+    }
+
+    /// Create the plumbing pipeline of `repo` with all drivers, including built-in ones.
+    pub(crate) fn plumbing(repo: &'repo Repository) -> Result<gix_filter::Pipeline> {
+        let pipeline = gix_filter::Pipeline::new(repo.command_context()?, repo.object_hash(), Self::options(repo)?);
+        #[cfg(feature = "lfs")]
+        let pipeline = crate::lfs::driver::register(repo, pipeline)?;
+        Ok(pipeline)
     }
 
     /// Detach the repository and obtain the individual functional parts.

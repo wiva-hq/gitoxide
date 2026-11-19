@@ -811,8 +811,35 @@ Record and reuse conflict resolutions across mergy workflows.
 
 ### gix-lfs
 
-Implement git large file support using the process protocol and make it flexible enough to handle a variety of cases.
-Make it the best-performing implementation and the most convenient one.
+Native [Git LFS](https://git-lfs.com) support that doesn't need the `git-lfs` program, compatible with repositories it also uses.
+`gix` integrates it with the `lfs` feature.
+
+* [x] parse and write version 1 pointers, with extensions kept, legacy versions read, and a size limit
+* [x] local object store at `<git-common-dir>/lfs` (or `lfs.storage`) laid out like `git-lfs`, with objects hashed, synced and moved into place
+* [x] `clean` and `smudge` built into the filter pipeline of `gix` for `filter=lfs`, streaming content into the store
+    * [x] objects missing on smudge are downloaded from the default remote, or the pointer is kept with a warning
+    * [x] `lfs.skipDownloadErrors`
+    * [x] configured `filter.lfs.*` programs are used instead with `gitoxide.core.builtinLfsFilter=false`
+* [x] endpoint discovery from `lfs.url`, `lfs.pushUrl`, `remote.<name>.lfsUrl`, `remote.<name>.lfsPushUrl`, `.lfsconfig` and remote URLs
+    * [x] `git-lfs-authenticate` over SSH
+* [x] batch API client with the `basic` transfer adapter
+    * [x] downloads, uploads and `verify`
+    * [x] action headers and expiry
+    * [x] per-object errors
+    * [x] retries on transient status codes, honoring `Retry-After`
+    * [x] resumption of interrupted downloads
+    * [x] parallel transfers, progress and interruption
+    * [x] credentials through credential helpers on 401, and `lfs.<url>.access = basic`
+    * [x] HTTP through `reqwest`, or any implementation of the HTTP trait
+* [x] list pointers in a tree or in a range of commits
+* [x] upload the objects of commits about to be pushed
+* [x] tell if a worktree file is a pointer and whether its object is present
+* [ ] file locking
+* [ ] custom transfer adapters, including `lfs-standalone-file` for local remotes
+* [ ] resumable uploads with `tus`
+* [ ] the SSH transfer protocol of `git-lfs-transfer`
+* [ ] pointer extensions when smudging
+* [ ] `lfs.fetchInclude`, `lfs.fetchExclude`, and pruning of the store
 
 ### gix-glob
 * [x] parse pattern
@@ -844,6 +871,7 @@ Make it the best-performing implementation and the most convenient one.
         - [x] `ident`
         - [x] filter processes
         - [x] single-invocation clean/smudge filters
+        - [x] built-in drivers, like the native `lfs` driver
 * [ ] apply tree and index changes for **reset**, **switch**, **restore** and stash workflows
 * access to per-path information, like `.gitignore` and `.gitattributes` in a manner well suited for efficient lookups
     * [x] _exclude_ information

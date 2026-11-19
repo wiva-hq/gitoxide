@@ -205,11 +205,7 @@ pub(crate) mod utils {
             },
             gix_diff::blob::Pipeline::new(
                 roots,
-                gix_filter::Pipeline::new(
-                    repo.command_context()?,
-                    repo.object_hash(),
-                    crate::filter::Pipeline::options(repo)?,
-                ),
+                crate::filter::Pipeline::plumbing(repo)?,
                 repo.config.diff_drivers()?,
                 repo.config.diff_pipeline_options(worktree)?,
             ),

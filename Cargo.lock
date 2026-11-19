@@ -1554,6 +1554,7 @@ dependencies = [
  "gix-hashtable",
  "gix-ignore",
  "gix-index",
+ "gix-lfs",
  "gix-lock",
  "gix-mailmap",
  "gix-merge",

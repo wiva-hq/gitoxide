@@ -542,6 +542,10 @@ pub mod revision;
 pub mod filter;
 
 ///
+#[cfg(feature = "lfs")]
+pub mod lfs;
+
+///
 pub mod remote;
 
 ///

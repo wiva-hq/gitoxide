@@ -206,6 +206,11 @@ attributes = [
     "command",
 ]
 
+## Native Git LFS without the `git-lfs` program: the `lfs` filter driver is built in, and `Repository::lfs()` lists
+## pointers and transfers objects. Downloads and uploads need an HTTP client, like the one of `blocking-http-transport-reqwest`,
+## and smudging downloads missing objects on demand if `parallel` is enabled as well.
+lfs = ["dep:gix-lfs", "attributes", "credentials"]
+
 ## Add support for mailmaps, as way of determining the final name of commmiters and authors.
 mailmap = ["dep:gix-mailmap", "revision"]
 
@@ -290,6 +295,7 @@ blocking-http-transport-curl-openssl = [
 blocking-http-transport-reqwest = [
     "blocking-network-client",
     "gix-transport/http-client-reqwest",
+    "gix-lfs?/http-client-reqwest",
 ]
 ## Stacks with `blocking-http-transport-reqwest` and enables `https://` via the `rustls` crate.
 blocking-http-transport-reqwest-rust-tls = [
@@ -449,6 +455,7 @@ gix-trace = { version = "^0.3.1", path = "../gix-trace" }
 
 gix-glob = { version = "^0.29.1", path = "../gix-glob" }
 gix-credentials = { version = "^0.42.1", path = "../gix-credentials", optional = true }
+gix-lfs = { version = "^0.0.0", path = "../gix-lfs", optional = true }
 gix-prompt = { version = "^0.19.1", path = "../gix-prompt", optional = true }
 gix-index = { version = "^0.58.0", path = "../gix-index", optional = true }
 gix-attributes = { version = "^0.37.1", path = "../gix-attributes", optional = true }
@@ -659,6 +666,15 @@ checks = [
     ] },
 ]
 tests = [
+    { args = [
+        "--no-default-features",
+        "--features",
+        "sha1,sha256,lfs,blocking-http-transport-reqwest,parallel",
+        "--test",
+        "gix",
+        "-E",
+        "test(repository::lfs::)",
+    ] },
     { args = [
         "--no-default-features",
         "--features",

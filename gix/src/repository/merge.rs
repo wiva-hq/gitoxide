@@ -41,11 +41,7 @@ impl Repository {
                 },
             )?
             .inner;
-        let filter = gix_filter::Pipeline::new(
-            self.command_context()?,
-            self.object_hash(),
-            crate::filter::Pipeline::options(self)?,
-        );
+        let filter = crate::filter::Pipeline::plumbing(self)?;
         // Git's diff size threshold does not change how text is merged.
         let filter = gix_merge::blob::Pipeline::new(worktree_roots, filter, Default::default());
         let options = gix_merge::blob::platform::Options {

@@ -18,6 +18,8 @@ mod excludes;
 mod filter;
 #[cfg(feature = "fsmonitor-server")]
 mod fsmonitor;
+#[cfg(feature = "lfs")]
+mod lfs;
 mod location;
 #[cfg(feature = "mailmap")]
 mod mailmap;
