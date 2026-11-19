@@ -200,6 +200,9 @@ The top-level crate that acts as hub to all functionality provided by the `gix-*
         * [x] read the primitive types `boolean`, `integer`, `string`
         * [x] read and interpolate trusted paths
         * [x] low-level API for more elaborate access to all details of `git-config` files
+        * [x] `core.fsync`, `core.fsyncMethod` and `core.fsyncObjectFiles` flush loose objects, packs, references and the index like Git
+            - **deviation**
+                * `batch` flushes each loose object on its own, like `fsync`.
         * [ ] a way to make changes to individual configuration files in memory
         * [ ] write configuration back
         * [ ] auto-refresh configuration values after they changed on disk

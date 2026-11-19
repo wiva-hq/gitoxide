@@ -134,6 +134,7 @@ impl Cache {
         let shared_repository_permissions =
             config::file_mut::shared_repository_permissions(&config, filter_config_section)
                 .with_lenient_default(lenient_config)?;
+        let fsync = config::fsync::settings(&config, filter_config_section).with_lenient_default(lenient_config)?;
         // NOTE: When adding a new initial cache, consider adjusting `reread_values_and_clear_caches()` as well.
         Ok(Cache {
             resolved: config.into(),
@@ -150,6 +151,7 @@ impl Cache {
             loose_compression,
             reflog,
             shared_repository_permissions,
+            fsync,
             refs_namespace,
             is_bare,
             ignore_case,
@@ -207,6 +209,8 @@ impl Cache {
         let shared_repository_permissions =
             config::file_mut::shared_repository_permissions(config, self.filter_config_section)
                 .with_lenient_default(self.lenient_config)?;
+        let fsync =
+            config::fsync::settings(config, self.filter_config_section).with_lenient_default(self.lenient_config)?;
         let refs_namespace = util::query_refs_namespace(config, self.lenient_config, self.filter_config_section)?;
         let object_caches = util::parse_object_caches(config, self.lenient_config, self.filter_config_section)?;
         let loose_compression =
@@ -220,6 +224,7 @@ impl Cache {
         }
         self.reflog = reflog;
         self.shared_repository_permissions = shared_repository_permissions;
+        self.fsync = fsync;
         self.refs_namespace = refs_namespace;
         (
             self.static_pack_cache_limit_bytes,
@@ -470,7 +475,9 @@ impl crate::Repository {
     fn apply_changed_values(&mut self) {
         self.refs.write_reflog = util::reflog_or_default(self.config.reflog, self.workdir().is_some());
         self.refs.shared_repository_permissions = self.config.shared_repository_permissions;
+        self.refs.fsync = self.config.fsync.mode(config::fsync::Components::REFERENCE);
         self.objects.shared_repository_permissions = self.config.shared_repository_permissions;
+        self.objects.loose_fsync = self.config.fsync.mode(config::fsync::Components::LOOSE_OBJECT);
         self.refs.namespace.clone_from(&self.config.refs_namespace);
     }
 }

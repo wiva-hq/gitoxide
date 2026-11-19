@@ -71,6 +71,7 @@ pub struct Outcome {
     /// The worktree index that was used for the operation.
     pub worktree_index: IndexPersistedOrInMemory,
     pub(super) skip_hash: bool,
+    pub(super) index_fsync: gix_fs::Fsync,
     pub(super) shared_repository_permissions: gix_fs::SharedPermissions,
     pub(super) changes: Option<Vec<(usize, ApplyChange)>>,
 }
@@ -111,7 +112,7 @@ impl Outcome {
             crate::index::write::Options {
                 extensions: Default::default(),
                 skip_hash: self.skip_hash,
-                fsync: gix_fs::Fsync::Off,
+                fsync: self.index_fsync,
             },
             self.shared_repository_permissions,
         ))

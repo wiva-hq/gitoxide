@@ -8,6 +8,15 @@ impl crate::Repository {
         self.config.loose_compression
     }
 
+    /// Return what to flush to storage and how, as configured by `core.fsync`, `core.fsyncMethod` and
+    /// `core.fsyncObjectFiles`.
+    ///
+    /// Use it to flush data written with plumbing that this repository doesn't write itself, like an index file written with
+    /// `gix_index::File::write()`. See [`config::fsync`] for details.
+    pub fn fsync_settings(&self) -> config::fsync::Settings {
+        self.config.fsync
+    }
+
     /// Return the effective compression level used when writing pack entries.
     pub fn pack_compression(&self) -> Result<gix_zlib::Compression> {
         config::cache::access::pack_compression(

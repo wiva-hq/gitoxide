@@ -200,14 +200,6 @@ static GIT_CONFIG: &[Record] = &[
         usage: NotPlanned("No plan to implement 'format-patch' or 'request-pull' summary"),
     },
     Record {
-        config: "core.fsync",
-        usage: Planned("More safety for disk write operations is a good thing, definitely on the server"),
-    },
-    Record {
-        config: "core.fsyncMethod",
-        usage: Planned("Needed to support 'core.fsync'"),
-    },
-    Record {
         config: "core.sharedRepository",
         usage: NotPlanned("On demand"),
     },

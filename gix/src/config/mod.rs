@@ -5,6 +5,7 @@ use crate::{Repository, repository::identity};
 
 pub(crate) mod cache;
 pub mod file_mut;
+pub mod fsync;
 
 mod snapshot;
 #[cfg(feature = "credentials")]
@@ -212,6 +213,8 @@ pub(crate) struct Cache {
     pub reflog: Option<gix_ref::store::WriteReflog>,
     /// The parsed `core.sharedRepository` policy for repository metadata.
     pub shared_repository_permissions: gix_fs::SharedPermissions,
+    /// What to flush to storage, and how.
+    pub fsync: fsync::Settings,
     /// The representation of `gitoxide.core.refsNamespace`, or `None` if the variable wasn't set.
     pub refs_namespace: Option<gix_ref::Namespace>,
     /// The configured user agent for presentation to servers.

@@ -126,7 +126,13 @@ pub mod main_worktree {
             files.show_throughput(start);
             bytes.show_throughput(start);
 
-            index.write(Default::default(), repo.config.shared_repository_permissions)?;
+            index.write(
+                gix_index::write::Options {
+                    fsync: repo.config.fsync.mode(crate::config::fsync::Components::INDEX),
+                    ..Default::default()
+                },
+                repo.config.shared_repository_permissions,
+            )?;
             Ok((self.repo.take().expect("still present").clone(), outcome))
         }
     }

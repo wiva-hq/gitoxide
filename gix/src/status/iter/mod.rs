@@ -141,6 +141,7 @@ where
                             worktree_index: index,
                             changes: None,
                             skip_hash,
+                            index_fsync: repo.config.fsync.mode(crate::config::fsync::Components::INDEX),
                             shared_repository_permissions: repo.config.shared_repository_permissions,
                         })
                     }
@@ -210,6 +211,7 @@ where
                 tree_index,
                 changes: None,
                 skip_hash,
+                index_fsync: self.repo.config.fsync.mode(crate::config::fsync::Components::INDEX),
                 shared_repository_permissions: self.repo.config.shared_repository_permissions,
             };
             items.extend(

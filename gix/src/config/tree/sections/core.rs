@@ -32,6 +32,17 @@ impl Core {
         keys::Program::new_program("editor", &config::Tree::CORE).with_environment_override("GIT_EDITOR");
     /// The `core.fileMode` key.
     pub const FILE_MODE: keys::Boolean = keys::Boolean::new_boolean("fileMode", &config::Tree::CORE);
+    /// The `core.fsync` key.
+    ///
+    /// See [`crate::config::fsync`] for what it flushes.
+    pub const FSYNC: keys::Any = keys::Any::new("fsync", &config::Tree::CORE);
+    /// The `core.fsyncMethod` key.
+    pub const FSYNC_METHOD: keys::Any = keys::Any::new("fsyncMethod", &config::Tree::CORE)
+        .with_deviation("'batch' flushes each loose object on its own, like 'fsync'");
+    /// The `core.fsyncObjectFiles` key, which Git deprecated in favor of `core.fsync`.
+    ///
+    /// If `true`, loose objects are flushed in addition to the components of `core.fsync`.
+    pub const FSYNC_OBJECT_FILES: keys::Boolean = keys::Boolean::new_boolean("fsyncObjectFiles", &config::Tree::CORE);
     /// The `core.fsCache` key.
     pub const FS_CACHE: keys::Boolean = keys::Boolean::new_boolean("fsCache", &config::Tree::CORE);
     /// The `core.ignoreCase` key.
@@ -143,6 +154,9 @@ impl Section for Core {
             &Self::DISAMBIGUATE,
             &Self::EDITOR,
             &Self::FILE_MODE,
+            &Self::FSYNC,
+            &Self::FSYNC_METHOD,
+            &Self::FSYNC_OBJECT_FILES,
             &Self::FS_CACHE,
             &Self::IGNORE_CASE,
             &Self::CONFIG_LOCK_TIMEOUT,

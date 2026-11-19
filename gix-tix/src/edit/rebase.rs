@@ -3036,6 +3036,7 @@ fn reset_index_paths(repo: &gix::Repository, id: ObjectId, paths: &[BString]) ->
         .write(
             gix::index::write::Options {
                 extensions: gix::index::write::Extensions::None,
+                fsync: repo.fsync_settings().mode(gix::config::fsync::Components::INDEX),
                 ..Default::default()
             },
             repo.refs.shared_repository_permissions,

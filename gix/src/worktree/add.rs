@@ -446,7 +446,13 @@ where
     bytes.show_throughput(started);
     ensure!(!should_interrupt.load(Ordering::Relaxed), Error::Interrupted);
     index
-        .write(Default::default(), repo.config.shared_repository_permissions)
+        .write(
+            gix_index::write::Options {
+                fsync: repo.config.fsync.mode(crate::config::fsync::Components::INDEX),
+                ..Default::default()
+            },
+            repo.config.shared_repository_permissions,
+        )
         .or_raise(|| message("Could not write the linked worktree index"))?;
     Ok(outcome)
 }
