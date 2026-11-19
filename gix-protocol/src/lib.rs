@@ -8,6 +8,7 @@
 //!     - [list references](LsRefsCommand)
 //!          - create a mapping between [refspecs and references](fetch::RefMap)
 //!     - [receive a pack](fetch())
+//!     - [send a pack and update references](push())
 //!
 //! ## Feature Flags
 #![cfg_attr(
@@ -65,6 +66,11 @@ pub use gix_transport as transport;
 pub mod fetch;
 #[cfg(any(feature = "blocking-client", feature = "async-client"))]
 pub use fetch::function::fetch;
+
+///
+pub mod push;
+#[cfg(any(feature = "blocking-client", feature = "async-client"))]
+pub use push::function::push;
 
 mod remote_progress;
 pub use remote_progress::RemoteProgress;
