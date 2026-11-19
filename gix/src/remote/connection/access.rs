@@ -52,16 +52,6 @@ where
 }
 
 /// Mutation
-impl<T> ConnectionDetached<'_, T>
-where
-    T: Transport,
-{
-    pub(crate) fn configured_credentials_for_current_url(&self, repo: &crate::Repository) -> AuthenticateFn<'static> {
-        configured_credentials_for_current_url(repo.clone())
-    }
-}
-
-/// Mutation
 impl<'auth, T> Connection<'_, 'auth, '_, T>
 where
     T: Transport,
@@ -132,7 +122,7 @@ where
     }
 }
 
-fn configured_credentials_for_current_url(repo: crate::Repository) -> AuthenticateFn<'static> {
+pub(super) fn configured_credentials_for_current_url(repo: crate::Repository) -> AuthenticateFn<'static> {
     let mut previous_cascade_and_prompt = None;
     Box::new(move |action| {
         if matches!(&action, gix_credentials::helper::Action::Get(_)) {

@@ -274,7 +274,7 @@ impl crate::Repository {
         }
     }
 
-    fn push_default(&self) -> Result<push::Default> {
+    pub(crate) fn push_default(&self) -> Result<push::Default> {
         self.config
             .resolved
             .string_filter(Push::DEFAULT, self.filter_config_section())

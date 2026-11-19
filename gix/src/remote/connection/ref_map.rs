@@ -1,4 +1,3 @@
-use crate::error::{ResultExt, message};
 #[cfg(feature = "async-network-client")]
 use gix_transport::client::async_io::Transport;
 #[cfg(feature = "blocking-network-client")]
@@ -7,7 +6,11 @@ use gix_utils::progress::Progress;
 
 use crate::{
     Result,
-    remote::{Connection, connection::ConnectionDetached, fetch},
+    remote::{
+        Connection,
+        connection::{ConnectionDetached, configure_and_handshake},
+        fetch,
+    },
 };
 
 /// For use in [`Connection::ref_map()`].
@@ -102,31 +105,13 @@ where
         {
             extra_refspecs.push(tag_spec);
         }
-        let mut credentials_storage;
-        let url = self.transport.inner.to_url();
-        let authenticate = match self.authenticate.as_mut() {
-            Some(f) => f,
-            None => {
-                credentials_storage = self.configured_credentials_for_current_url(repo);
-                &mut credentials_storage
-            }
-        };
-
-        if self.transport_options.is_none() {
-            self.transport_options = repo
-                .transport_options(url.as_ref(), self.remote.name().map(crate::remote::Name::as_bstr))
-                .or_raise(|| message!("Failed to configure the transport before connecting to {url:?}"))?;
-        }
-        if let Some(config) = self.transport_options.as_ref() {
-            self.transport
-                .inner
-                .configure(&**config)
-                .or_raise(|| message("Failed to configure the transport layer"))?;
-        }
-        let mut handshake = gix_protocol::handshake(
+        let mut handshake = configure_and_handshake(
             &mut self.transport.inner,
+            self.authenticate.as_mut(),
+            &mut self.transport_options,
+            repo,
+            self.remote.name().map(crate::remote::Name::as_bstr),
             gix_transport::Service::UploadPack,
-            authenticate,
             handshake_parameters,
             &mut progress,
         )

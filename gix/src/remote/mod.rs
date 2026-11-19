@@ -53,7 +53,7 @@ pub mod connect;
 #[cfg(any(feature = "async-network-client", feature = "blocking-network-client"))]
 mod connection;
 #[cfg(any(feature = "async-network-client", feature = "blocking-network-client"))]
-pub use connection::{AuthenticateFn, Connection, ref_map};
+pub use connection::{AuthenticateFn, Connection, push, ref_map};
 
 ///
 pub mod save;

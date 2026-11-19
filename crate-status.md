@@ -50,7 +50,7 @@ today's code and goals.
     * [ ] `rebase` - mainly `gix-rebase`, `gix-sequencer`, `gix-merge`, `gix-apply`, `gix-rerere`, `gix-hook`, `gix`
     * [ ] `bisect` - mainly `gix-bisect`, `gix-sequencer`, `gix-revision`, `gix-revwalk`, `gix-traverse`, `gix`
     * [ ] `stash`, `am` and `apply` - mainly `gix-stash`, `gix-apply`, `gix-mailbox`, `gix`, `gix-diff`, `gix-worktree-state`, `gix-sequencer`, `gix-rerere`
-    * [ ] `push` and self-contained clone/fetch over `file://` and `ssh://` - mainly `gix`, `gix-protocol`, `gix-transport`, `gix-ssh`
+    * [ ] self-contained push, clone and fetch over `file://` and `ssh://` - mainly `gix`, `gix-protocol`, `gix-transport`, `gix-ssh`
 * **cross-cutting parity work**
     * [ ] hook discovery and execution - mainly `gix-hook`, `gix`, `gix-ref`, `gix-protocol`
     * [ ] Git 3.0 compatibility (`SHA-256`, `reftable`) - mainly `gix-hash`, `gix-ref`, `gix-reftable`, `gix-protocol`, `gix-odb`
@@ -157,7 +157,15 @@ The top-level crate that acts as hub to all functionality provided by the `gix-*
             * [x] 'ref-in-want'
             * [ ] 'wanted-ref'
             * [x] standard negotiation algorithms `consecutive`, `skipping` and `noop`.
-        * [ ] push
+        * [x] push
+            * [x] refspecs from options, `remote.<name>.push` or `push.default`, with patterns, exclusions and deletions
+            * [x] reject non-fast-forwards and existing tags locally unless forced with `+`, and force-with-lease
+            * [x] atomic pushes, push options and dry runs
+            * [x] `remote.<name>.pushurl` and `url.<base>.pushInsteadOf`
+            * [x] update remote-tracking references
+            * [ ] push to all URLs of a remote, only the first is used
+            * [ ] deltas and thin packs, objects are sent whole
+            * [ ] signed pushes, following tags, submodules and pushing from shallow repositories
         * [x] ls-refs
         * [x] ls-refs with ref-spec filter
         * [x] list, find by name
@@ -582,7 +590,7 @@ Provide a native SSH transport and authentication backend so `gix` users can shi
 * [x] ls-refs
     * [x] parse V1 refs as provided during handshake
     * [x] parse V2 refs
-    * [ ] handle empty refs, AKA PKT-LINE(zero-id SP "capabilities^{}" NUL capability-list)
+    * [x] handle empty refs, AKA PKT-LINE(zero-id SP "capabilities^{}" NUL capability-list)
 * [x] fetch
     * [x] detailed progress
     * [x] control credentials provider to fill, approve and reject
@@ -591,10 +599,10 @@ Provide a native SSH transport and authentication backend so `gix` users can shi
     * [x] packfile negotiation
         * [x] delegate can support for all fetch features, including shallow, deepen, etc.
         * [x] receive parsed shallow refs
-* [ ] push
-    * [ ] send-pack / receive-pack client plumbing
-    * [ ] report-status, sideband, delete-refs, push-options and atomic pushes
-    * [ ] object-format negotiation
+* [x] push
+    * [x] send-pack / receive-pack client plumbing
+    * [x] report-status and report-status-v2, sideband, delete-refs, push-options, quiet and atomic pushes
+    * [x] object-format negotiation
 * [ ] upload-pack / receive-pack server plumbing for in-process transports
 * [ ] bundle-uri protocol integration
 * [ ] remote helper protocol and integration

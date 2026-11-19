@@ -106,3 +106,7 @@
 # Generate these small status fixtures with host-local symlink preflight and index timestamps.
 /make_status_attribute_and_ignore_repos.tar
 /make_status_attribute_and_ignore_repos_sha256.tar
+# Push tests let the host `git` receive into these repositories and run their hooks, so the host `git`
+# creates them as well.
+/make_remote_push_repos.tar
+/make_remote_push_repos_sha256.tar

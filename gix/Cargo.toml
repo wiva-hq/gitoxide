@@ -256,6 +256,7 @@ worktree-archive = ["gix-archive", "worktree-stream", "attributes"]
 async-network-client = [
     "gix-protocol/async-client",
     "gix-pack/streaming-input",
+    "gix-pack/generate",
     "dep:gix-transport",
     "attributes",
     "credentials",
@@ -270,6 +271,7 @@ async-network-client-async-std = [
 blocking-network-client = [
     "gix-protocol/blocking-client",
     "gix-pack/streaming-input",
+    "gix-pack/generate",
     "dep:gix-transport",
     "attributes",
     "credentials",
@@ -742,6 +744,14 @@ tests = [
         "--features",
         "blocking-network-client,sha256",
     ], env = { GIX_TEST_FIXTURE_HASH = "sha256" } },
+    { args = [
+        "--features",
+        "blocking-http-transport-reqwest-rust-tls,sha256",
+        "--test",
+        "gix",
+        "-E",
+        "test(remote::push::)",
+    ] },
     { args = [
         "--features",
         "sha256",
