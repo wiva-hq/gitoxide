@@ -3,7 +3,7 @@ use gix_diff::{Rewrites, tree_with_rewrites::Change};
 use gix_error::ClassificationMarker;
 
 pub(crate) mod index;
-pub use index::IndexPlan;
+pub use index::{IndexPlan, UnmergedKind, UnmergedPath};
 
 /// A recoverable failure of [`tree()`](crate::tree()).
 /// Other failures retain their original causes in the returned exception.

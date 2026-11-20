@@ -27,6 +27,55 @@ pub struct IndexPlan {
     needs_review: [bool; 3],
 }
 
+/// A path whose conflict leaves unmerged stages in the index, as listed by [`IndexPlan::unmerged()`].
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub struct UnmergedPath<'a> {
+    /// The repository-relative path, with `/` as separator.
+    pub path: &'a BStr,
+    /// The `(mode, id)` of the ancestor (stage 1), *our* side (stage 2) and *their* side (stage 3) at `path`,
+    /// with `None` where that side has no entry.
+    pub stages: [Option<(gix_object::tree::EntryMode, gix_hash::ObjectId)>; 3],
+    /// The outcome of merging the content of these stages, if it was merged.
+    /// With [`Resolution::Conflict`](crate::blob::Resolution::Conflict), the merged tree holds the conflicting
+    /// lines between markers at `path`.
+    pub content: Option<crate::blob::Resolution>,
+}
+
+/// How the stages of an [`UnmergedPath`] relate, named like the unmerged states of `git status`.
+#[derive(Clone, Copy, Debug, Eq, PartialEq, Hash)]
+pub enum UnmergedKind {
+    /// Only the ancestor is present (`DD`).
+    BothDeleted,
+    /// Only *our* side is present (`AU`).
+    AddedByUs,
+    /// The ancestor and *our* side are present (`UD`).
+    DeletedByThem,
+    /// Only *their* side is present (`UA`).
+    AddedByThem,
+    /// The ancestor and *their* side are present (`DU`).
+    DeletedByUs,
+    /// Both sides are present without an ancestor (`AA`).
+    BothAdded,
+    /// All three stages are present (`UU`).
+    BothModified,
+}
+
+impl UnmergedPath<'_> {
+    /// Classify the conflict by the stages that are present.
+    pub fn kind(&self) -> UnmergedKind {
+        match self.stages.each_ref().map(Option::is_some) {
+            [true, false, false] => UnmergedKind::BothDeleted,
+            [false, true, false] => UnmergedKind::AddedByUs,
+            [true, true, false] => UnmergedKind::DeletedByThem,
+            [false, false, true] => UnmergedKind::AddedByThem,
+            [true, false, true] => UnmergedKind::DeletedByUs,
+            [false, true, true] => UnmergedKind::BothAdded,
+            [true, true, true] => UnmergedKind::BothModified,
+            [false, false, false] => unreachable!("unmerged paths have at least one stage"),
+        }
+    }
+}
+
 #[derive(Clone, Debug)]
 struct Path {
     /// Final stage-zero leaf entry, used when `unmerged` is absent or considered resolved.
@@ -169,6 +218,22 @@ impl IndexPlan {
             index.copy_metadata_from(existing)?;
         }
         Ok(index)
+    }
+
+    /// Return the paths that [`to_index()`](Self::to_index()) leaves unmerged with `how`, in index order,
+    /// each with the entries of its stages.
+    ///
+    /// Conflicts that leave no stages, like a directory rename that needs confirmation, are only described by
+    /// the merge's conflict list.
+    pub fn unmerged(&self, how: TreatAsUnresolved) -> impl Iterator<Item = UnmergedPath<'_>> + '_ {
+        self.paths.iter().filter_map(move |(path, state)| {
+            let stages = state.unmerged.as_deref().filter(|stages| stages.is_unmerged(how))?;
+            Some(UnmergedPath {
+                path: path.as_bstr(),
+                stages: stages.entries.map(|entry| entry.map(|entry| (entry.mode, entry.id))),
+                content: stages.content,
+            })
+        })
     }
 
     /// Return whether the index produced with `how` contains stages 1, 2, or 3.
