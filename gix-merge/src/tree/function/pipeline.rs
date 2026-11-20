@@ -36,9 +36,34 @@ use crate::tree::{Conflict, ConflictMapping, IndexPlan, Options, Outcome, Resolu
 ///
 /// Like Git's `merge-ort`, this resolves normalized three-input paths from children to parents.
 /// Rename candidates and directory destinations come from these three inputs; file matching
-/// uses `gix-diff`'s rewrite tracker. Ambiguous identities can still differ from Git. Copies are treated as additions.
-/// Explicit renames returned to their source by directory relocation still participate in opposite
-/// rename conflicts. Both destinations are retained; Git can miss this conflict depending on side order.
+/// uses `gix-diff`'s rewrite tracker. Copies are treated as additions.
+///
+/// ### Differences from Git
+///
+/// Merges are compared with `git merge-tree` by differential tests in `gix`, and only differ where
+/// Git's result depends on the order of the sides, drops a change, or nests an index entry below a file:
+///
+/// * **Rename onto an identical addition:** one side renames a changed file to where the other side
+///   adds the renamed entry, while also changing the source. This merges the rename as if the addition
+///   wasn't there. Git keeps *our* entry if *theirs* renamed the file, dropping *our* change to the source,
+///   and if *ours* renamed it, reports a clean merge even if the contents conflict, leaving conflict markers.
+/// * **Rename moved back to its source:** one side renames a file into a directory that the other side
+///   renames back to the file's original directory, while also renaming the file elsewhere. Both destinations
+///   are kept as rename/rename conflict. Git does the same if *ours* renamed the directory, and otherwise
+///   merges cleanly with only the other destination.
+/// * **Directory rename onto a modified file:** a directory rename moves a file added by one side below a
+///   file that the other side modified. The modified file moves aside to `<path>~<side>` in a file/directory
+///   conflict. Git reports a conflict as well, but drops the modified file, or the added one if the modified
+///   file also conflicts.
+/// * **Rename below the other rename's destination:** one side renames a file to `<path>`, and a directory
+///   rename moves the other side's rename of the same file below `<path>`. The file moves aside to
+///   `<path>~<side>` in a file/directory conflict, as Git does without the directory rename. Git keeps the file
+///   at `<path>` and lists the other destination below it only as unmerged entry.
+/// * **Paths that aren't valid UTF-8 on Windows:** attributes are looked up through paths of the operating
+///   system, which can't represent them, so the merge fails with an error. Git merges them as bytes.
+/// * **Submodules without `context`:** both sides changing a gitlink is a conflict unless
+///   [`Context::submodule`](crate::tree::Context::submodule) can tell that one commit contains the other,
+///   while Git looks it up in the submodule repository.
 ///
 /// Selecting an absent binary resource returns [`crate::tree::Error::MissingBinaryMergeResult`],
 /// classified as [`gix_error::Class::NotFound`]. Virtual-base construction instead represents
@@ -84,7 +109,7 @@ pub fn tree<'objects>(
     let mut changes: [change::Changes; 2] = Default::default();
     // Rename candidates come from the same inputs as ordinary entry decisions.
     if let Some(rewrites) = options.rewrites {
-        let destination_orders = change::destination_orders(&collected);
+        let discovery = change::discovery(&collected);
         for index in 0..2 {
             changes[index] = change::collect(
                 &collected,
@@ -94,7 +119,7 @@ pub fn tree<'objects>(
                 diff_resource_cache,
                 rewrites,
                 options.directory_renames,
-                &destination_orders[index],
+                &discovery[index],
             )?;
         }
     }
@@ -136,9 +161,11 @@ pub fn tree<'objects>(
             |location, stages, blob_merge| {
                 let ours = stages[1].as_ref().expect("content merging requires both sides");
                 let theirs = stages[2].as_ref().expect("content merging requires both sides");
+                // Like Git, the base of a file renamed on both sides is labelled with its destination.
                 let base_location = stages[0]
                     .as_ref()
-                    .map_or(location.as_bstr(), |stage| stage.source.as_ref());
+                    .filter(|base| base.source == ours.source || base.source == theirs.source)
+                    .map_or(location.as_bstr(), |base| base.source.as_ref());
                 entry::merge(
                     labels,
                     objects,
@@ -568,7 +595,15 @@ fn resolve_leaf(
                     },
                 );
                 if let Some(choice) = policy.tree_resolution() {
-                    retained_merges.extend(force_path(paths, original_location, choice, renames));
+                    retained_merges.extend(force_leaf(
+                        paths,
+                        location,
+                        original_location,
+                        Some(base),
+                        choice,
+                        policy,
+                        renames,
+                    ));
                 } else {
                     select_stage(paths, location, stages[side].as_ref(), &mut retained_merges);
                     paths
@@ -651,7 +686,15 @@ fn resolve_leaf(
                 let merged = merge(location, stages, blob_merge)?.expect("compatible leaf entries can be merged");
                 content_clean = !merged.is_conflict();
                 if let Some(choice) = merged.force {
-                    retained_merges.extend(force_path(paths, original_location, choice, renames));
+                    retained_merges.extend(force_leaf(
+                        paths,
+                        location,
+                        original_location,
+                        base,
+                        choice,
+                        policy,
+                        renames,
+                    ));
                 } else {
                     paths.set_result(location, Some(merged.entry));
                     if (path_conflict || merged.has_tree_conflict()) && policy.tree_resolution().is_none() {
@@ -786,6 +829,25 @@ fn retain_merge(
         Ok(Resolution::OursModifiedTheirsModifiedThenBlobContentMerge { merged_blob: content }),
         ConflictMapping::Original,
     ));
+}
+
+/// Like Git, a virtual merge base keeps the ancestor of a file moved aside for a directory at `location`,
+/// leaving the directory at `original_location` as merged.
+fn force_leaf(
+    paths: &mut State<'_>,
+    location: &BStr,
+    original_location: &BStr,
+    base: Option<Entry>,
+    choice: ResolveWith,
+    policy: ResolutionPolicy,
+    renames: &BTreeMap<BString, [Option<Change>; 2]>,
+) -> Vec<(BString, EntryMerge)> {
+    if policy.is_virtual() && choice == ResolveWith::Ancestor && location != original_location {
+        paths.set_result(location, base);
+        Vec::new()
+    } else {
+        force_path(paths, original_location, choice, renames)
+    }
 }
 
 /// Selecting an input restores every affected rename source from that same immutable input.

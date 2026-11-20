@@ -15,11 +15,21 @@ pub(super) struct Changes {
     pub directories: Vec<directories::DirectoryRename>,
 }
 
-/// Retain ORT's destination discovery order using the already-collected three inputs.
+/// How ORT feeds one side's changes to rename detection.
+pub(super) struct Discovery<'a> {
+    /// Destinations in ORT's traversal order, or empty if that is path order.
+    pub destination_order: Vec<&'a BStr>,
+    /// Deleted paths, sorted, whose renames can't affect the merge, so they only take identical destinations.
+    pub exact_only_sources: Vec<&'a BStr>,
+}
+
+/// Retain ORT's rename discovery using the already-collected three inputs.
 /// Directories added on one side, or unchanged on the opposite side, are deferred
 /// until after the initial traversal. Directory-rename relevance requires immediate
 /// traversal instead, including in their nested directories.
-pub(super) fn destination_orders(collected: &super::path::Collected) -> [Vec<&BStr>; 2] {
+/// A deleted file is only a similarity source if the other side changed it, or if it is below
+/// a directory removed on this side to which the other side added files.
+pub(super) fn discovery(collected: &super::path::Collected) -> [Discovery<'_>; 2] {
     #[derive(Clone, Copy, Default)]
     struct Directory {
         // Surviving side below a removed directory, or all bits once additions
@@ -91,6 +101,18 @@ pub(super) fn destination_orders(collected: &super::path::Collected) -> [Vec<&BS
     let deferred_orders = deferred.map(|paths| deferred_directory_order(&paths));
     std::array::from_fn(|index| {
         let side = index + 1;
+        let mut exact_only_sources: Vec<_> = traversal()
+            .filter_map(|(path, inputs)| {
+                (inputs[0].is_some_and(|entry| entry.mode.is_no_tree())
+                    && inputs[side].is_none_or(|entry| entry.mode.is_tree())
+                    && inputs[3 - side] == inputs[0]
+                    && directories
+                        .get(parent(path))
+                        .is_none_or(|directory| directory.rename_mask != 7))
+                .then_some(path)
+            })
+            .collect();
+        exact_only_sources.sort_unstable();
         let mut destinations: Vec<_> = traversal()
             .filter_map(|(path, inputs)| {
                 (inputs[side].is_some_and(|entry| entry.mode.is_no_tree())
@@ -111,7 +133,10 @@ pub(super) fn destination_orders(collected: &super::path::Collected) -> [Vec<&BS
         if destinations.is_sorted() {
             destinations.clear();
         }
-        destinations
+        Discovery {
+            destination_order: destinations,
+            exact_only_sources,
+        }
     })
 }
 
@@ -196,7 +221,7 @@ pub(super) fn collect(
     diff_resource_cache: &mut gix_diff::blob::Platform,
     rewrites: gix_diff::Rewrites,
     directory_renames: crate::tree::DirectoryRenames,
-    destination_order: &[&BStr],
+    discovery: &Discovery<'_>,
 ) -> Result<Changes> {
     let mut changes = Changes::default();
     let mut tracked = gix_diff::rewrites::Tracker::new(rewrites);
@@ -273,8 +298,8 @@ pub(super) fn collect(
             objects,
             |push| push_copy_sources(base_tree, objects, push),
             tracker::Context {
-                destination_order,
-                ..Default::default()
+                destination_order: &discovery.destination_order,
+                exact_only_sources: &discovery.exact_only_sources,
             },
         )
         .or_raise(|| message("Tree merge rename discovery failed"))?;
@@ -400,7 +425,10 @@ mod tests {
             &mut resources,
             gix_diff::Rewrites::default(),
             crate::tree::DirectoryRenames::Disabled,
-            &[],
+            &super::Discovery {
+                destination_order: Vec::new(),
+                exact_only_sources: Vec::new(),
+            },
         )?;
         assert_eq!(changes.entries.len(), 1, "the only base entry is deleted");
         assert!(

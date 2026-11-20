@@ -445,9 +445,14 @@ impl<O: gix_object::FindObjectOrHeader, W: FnMut(&[u8]) -> Result<ObjectId>> Con
         let type_changed = opposite_source
             .as_ref()
             .is_some_and(|stage| stage.entry.mode.is_blob() != renamed.entry.mode.is_blob());
-        let destination_collision =
-            source != &rename.destination && leaf_stage(state, &rename.destination, other).is_some();
-        let collision = destination_collision && !type_changed;
+        let destination_addition = (source != &rename.destination)
+            .then(|| leaf_stage(state, &rename.destination, other))
+            .flatten();
+        let destination_collision = destination_addition.is_some();
+        // Like Git, an addition identical to the renamed entry doesn't collide, so the rename merges as usual.
+        let identical_addition =
+            opposite_source.is_some() && destination_addition.is_some_and(|added| added.entry == renamed.entry);
+        let collision = destination_collision && !type_changed && !identical_addition;
         let mut global_changes = [rename.original.clone(), rename.original.clone()];
         global_changes[rename.side - 1] = rename.original.clone();
         global_changes[other - 1] =

@@ -3858,11 +3858,23 @@ for pair in add-add rename-add rename-rename; do
           their_tree_id=$(policy_tree a 100644 "$base_blob_id" b 100644 "$their_blob_id") ;;
       esac
       policy_commits
+      ancestor_tree_id=$base_tree_id
+      reversed_tree_id=$their_tree_id
+      if test "$contents" = conflicting; then
+        # Like Git, only detect the inexact rename of `a` if the other side changed it.
+        # The other side keeps it unchanged, so it is a deletion, and only the ancestor of `b` remains to choose,
+        # or the version of `b` in B if B is *ours*.
+        reversed_tree_id=$(policy_tree b 100644 "$their_blob_id")
+        case "$pair" in
+          rename-add) ancestor_tree_id=$(policy_tree) ;;
+          rename-rename) ancestor_tree_id=$(policy_tree c 100644 "$second_blob_id") ;;
+        esac
+      fi
       for order in A-B B-A; do
-        echo "$base_tree_id" >".git/resolve-$order-with-ancestor.tree"
+        echo "$ancestor_tree_id" >".git/resolve-$order-with-ancestor.tree"
       done
       echo "$our_tree_id" >.git/resolve-A-B-with-ours.tree
-      echo "$their_tree_id" >.git/resolve-B-A-with-ours.tree
+      echo "$reversed_tree_id" >.git/resolve-B-A-with-ours.tree
     )
     baseline "$repo" default A B
     baseline "$repo" file-favor-ours A B
@@ -4038,6 +4050,8 @@ for pair in divergent-renames modify-rename converging-renames rename-add add-ad
     fi
     if test "$pair" = rename-add; then
       new_entries+=(outside 100644 "$base_blob_id")
+      # Like Git, only rename exactly as *ours* keeps the source unchanged.
+      their_blob_id=$base_blob_id
     fi
     base_tree_id=$(policy_tree "${base_entries[@]+"${base_entries[@]}"}")
     our_tree_id=$(policy_tree "${new_entries[@]+"${new_entries[@]}"}" "$our_path" 100644 "$our_blob_id")
