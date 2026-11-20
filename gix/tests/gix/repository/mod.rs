@@ -25,6 +25,8 @@ mod location;
 mod mailmap;
 #[cfg(feature = "merge")]
 mod merge;
+#[cfg(feature = "merge")]
+mod merge_differential;
 #[cfg(feature = "notes")]
 mod note;
 #[cfg(feature = "notify")]
