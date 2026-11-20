@@ -58,6 +58,7 @@ fn explicit_destination_order_preserves_the_generic_default() -> TestResult {
                     |_| Ok::<_, std::io::Error>(()),
                     rewrites::tracker::Context {
                         destination_order: &["flat".into(), "dst/name".into()],
+                        ..Default::default()
                     },
                 )?;
             } else {

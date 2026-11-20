@@ -30,6 +30,10 @@ pub struct Context<'a> {
     /// An empty list preserves path ordering. Merge callers can supply their deferred
     /// three-tree traversal order without changing ordinary diff matching.
     pub destination_order: &'a [&'a BStr],
+    /// Deleted paths, sorted, that may only be paired with identical destinations.
+    /// Merge callers can exclude sources whose renames can't affect the result from similarity
+    /// matching, as Git does, so they don't take a destination from a source that matters.
+    pub exact_only_sources: &'a [&'a BStr],
 }
 
 /// The kind of a change.
@@ -390,6 +394,13 @@ impl<T: Change> Tracker<T> {
             .map(|item| item.emitted || item.change.kind() == ChangeKind::Modification)
             .collect();
         let mut matches = vec![None; self.items.len()];
+        let exact_only = |src: usize| {
+            self.items[src].change.kind() == ChangeKind::Deletion
+                && context
+                    .exact_only_sources
+                    .binary_search(&self.items[src].location(&self.path_backing))
+                    .is_ok()
+        };
         let mut unused_sources = sources.iter().filter(|&&src| !used[src]).count();
         for &dst in &destinations {
             if let Some(src) = self.exact_source(&sources, dst, &used, copies, unused_sources == 0) {
@@ -424,7 +435,7 @@ impl<T: Change> Tracker<T> {
                 let basename_score = rename_score + (MAX_SCORE - rename_score) / 2;
                 for &src in &sources {
                     let name = filename(self.items[src].location(&self.path_backing));
-                    if source_names.get(name) != Some(&Some(src)) {
+                    if exact_only(src) || source_names.get(name) != Some(&Some(src)) {
                         continue;
                     }
                     if let Some(&Some(dst)) = destination_names.get(name)
@@ -453,7 +464,9 @@ impl<T: Change> Tracker<T> {
                 sources.retain(|&src| !used[src]);
             }
             sources.retain(|&src| {
-                if used[src] {
+                if exact_only(src) {
+                    false
+                } else if used[src] {
                     copy_score < MAX_SCORE
                 } else {
                     rename_score < MAX_SCORE

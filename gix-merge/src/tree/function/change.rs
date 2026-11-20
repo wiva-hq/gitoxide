@@ -272,7 +272,10 @@ pub(super) fn collect(
             diff_resource_cache,
             objects,
             |push| push_copy_sources(base_tree, objects, push),
-            tracker::Context { destination_order },
+            tracker::Context {
+                destination_order,
+                ..Default::default()
+            },
         )
         .or_raise(|| message("Tree merge rename discovery failed"))?;
     if directory_renames != crate::tree::DirectoryRenames::Disabled {
