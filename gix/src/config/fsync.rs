@@ -248,10 +248,11 @@ pub(crate) fn settings(config: &gix_config::File, filter: fn(&gix_config::file::
             bail!(config::key::error(&Core::FSYNC_METHOD, "A value is required"));
         }
         for value in section.values(Core::FSYNC_METHOD.name()) {
-            match Method::from_value(value.as_bstr()) {
-                Some(method) => settings.method = method,
-                None => gix_trace::warn!("ignoring unknown core.fsyncMethod value '{}'", value.as_bstr()),
-            }
+            let Some(method) = Method::from_value(value.as_bstr()) else {
+                gix_trace::warn!("ignoring unknown core.fsyncMethod value '{}'", value.as_bstr());
+                continue;
+            };
+            settings.method = method;
         }
     }
     if Core::FSYNC_OBJECT_FILES.enrich_error(config.boolean_filter(Core::FSYNC_OBJECT_FILES, filter))? == Some(true) {
