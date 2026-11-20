@@ -46,10 +46,11 @@ pub(super) mod function {
         options.tree_conflicts = Some(crate::tree::ResolveWith::Ancestor);
         options.fail_on_conflict = None;
         options.blob_merge.is_virtual_ancestor = true;
-        // Conflict markers carry both histories into the final merge, independently of file favor.
-        if !matches!(
+        // Conflict markers carry both histories into the final merge, independently of a favored side.
+        // Like Git's `union` driver, which has no recursive driver, union merges also apply here.
+        if matches!(
             options.blob_merge.text.conflict,
-            builtin_driver::text::Conflict::Keep { .. }
+            builtin_driver::text::Conflict::ResolveWithOurs | builtin_driver::text::Conflict::ResolveWithTheirs
         ) {
             options.blob_merge.text.conflict = Default::default();
         }

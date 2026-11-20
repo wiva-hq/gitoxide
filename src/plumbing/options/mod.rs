@@ -741,6 +741,8 @@ pub mod merge {
         Ours,
         /// Use only theirs in case of conflict.
         Theirs,
+        /// Use the lines of ours and theirs in case of a text conflict.
+        Union,
     }
 
     #[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, clap::ValueEnum)]
@@ -756,6 +758,7 @@ pub mod merge {
             match value {
                 FileFavor::Ours => gix::merge::tree::FileFavor::Ours,
                 FileFavor::Theirs => gix::merge::tree::FileFavor::Theirs,
+                FileFavor::Union => gix::merge::tree::FileFavor::Union,
             }
         }
     }

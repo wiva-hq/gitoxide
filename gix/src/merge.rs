@@ -188,17 +188,18 @@ pub mod tree {
             if let Some(file_favor) = value.file_favor {
                 let (resolve_binary, resolve_text) = match file_favor {
                     FileFavor::Ours => (
-                        builtin_driver::binary::ResolveWith::Ours,
+                        Some(builtin_driver::binary::ResolveWith::Ours),
                         builtin_driver::text::Conflict::ResolveWithOurs,
                     ),
                     FileFavor::Theirs => (
-                        builtin_driver::binary::ResolveWith::Theirs,
+                        Some(builtin_driver::binary::ResolveWith::Theirs),
                         builtin_driver::text::Conflict::ResolveWithTheirs,
                     ),
+                    FileFavor::Union => (None, builtin_driver::text::Conflict::ResolveWithUnion),
                 };
 
-                opts.symlink_conflicts = Some(resolve_binary);
-                opts.blob_merge.resolve_binary_with = Some(resolve_binary);
+                opts.symlink_conflicts = resolve_binary;
+                opts.blob_merge.resolve_binary_with = resolve_binary;
                 opts.blob_merge.text.conflict = resolve_text;
             }
             opts.tree_conflicts = value.tree_favor.map(Into::into);
@@ -206,15 +207,11 @@ pub mod tree {
         }
     }
 
-    /// Identify how files should be resolved in case of conflicts.
+    /// Identify how files should be resolved in case of conflicts, like Git's `-X ours`, `-X theirs`
+    /// and the `merge=union` attribute.
     ///
-    /// This works for…
-    ///
-    /// * content merges
-    /// * binary files
-    /// * symlinks (a form of file after all)
-    ///
-    /// Note that *union* merges aren't available as they aren't available for binaries or symlinks.
+    /// *Ours* and *theirs* apply to text content merges, binary files and symlinks, while *union* only
+    /// applies to text content merges. It does not affect merges whose driver is chosen by attributes.
     #[derive(Debug, Copy, Clone)]
     pub enum FileFavor {
         /// Choose *our* side in case of a conflict.
@@ -222,9 +219,12 @@ pub mod tree {
         /// so *their* hunks may still show up in the merged result.
         Ours,
         /// Choose *their* side in case of a conflict.
-        /// Note that this choice is precise, so *ours* hunk will only be chosen if they conflict with *theirs*,
-        /// so *their* hunks may still show up in the merged result.
+        /// Note that this choice is precise, so *their* hunk will only be chosen if they conflict with *ours*,
+        /// so *our* hunks may still show up in the merged result.
         Theirs,
+        /// Keep the lines of both sides of a conflicting text hunk, *ours* first, without conflict markers.
+        /// Binary files and symlinks still conflict.
+        Union,
     }
 
     /// Control how irreconcilable changes to trees should be resolved.
